@@ -201,12 +201,11 @@ function Hero() {
         style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
         className="relative z-10 mb-8"
       >
-        <div className="relative pulse-ring rounded-full">
+        <div className="relative logo-ring p-3">
           <img
             src="/b3k1c-logo.png"
             alt="b3k1c.exe logo"
-            className="w-32 h-32 md:w-44 md:h-44 object-contain logo-hologram rounded-full"
-            style={{ filter: 'drop-shadow(0 0 20px rgba(0, 255, 136, 0.4))' }}
+            className="w-32 h-32 md:w-48 md:h-48 object-contain logo-hologram rounded-full"
           />
         </div>
       </motion.div>
