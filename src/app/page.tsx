@@ -607,10 +607,14 @@ export default function Home() {
     { title: 'Web Project 3', subtitle: 'Coming Soon' },
   ]
 
-  /* placeholder cards data */
+  /* DESIGNS section cards */
   const designCards = [
+    {
+      title: 'Unicate OGC Logo',
+      subtitle: 'Logo Design',
+      image: '/portfolio/unicate-ogc/logo.jpg',
+    },
     { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
-    { title: 'Poster Design', subtitle: 'Print & Digital' },
     { title: 'UI/UX Concept', subtitle: 'Mobile & Web' },
     { title: 'Illustration', subtitle: 'Digital Art & Vector' },
     { title: 'Typography', subtitle: 'Custom Type Design' },
