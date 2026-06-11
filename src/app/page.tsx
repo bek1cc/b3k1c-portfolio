@@ -691,7 +691,20 @@ export default function Home() {
         'Contact Page',
       ],
     },
-    { title: 'Web Project 4', subtitle: 'Coming Soon' },
+    {
+      title: 'Filmoplanet',
+      subtitle: 'Movie platform website',
+      image: '/portfolio/filmoplanet/section-1.png',
+      galleryImages: [
+        '/portfolio/filmoplanet/section-2.png',
+        '/portfolio/filmoplanet/section-3.png',
+      ],
+      galleryTitles: [
+        'Movie Listings',
+        'Details & Booking',
+      ],
+    },
+    { title: 'Web Project 5', subtitle: 'Coming Soon' },
   ]
 
   /* DESIGNS section cards */
