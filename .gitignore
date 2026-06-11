@@ -52,3 +52,11 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Extra stuff
+download/
+.zscripts/
+db/
+Caddyfile
+bun.lock
+components.json
+*.zip
