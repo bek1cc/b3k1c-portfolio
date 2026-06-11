@@ -1,0 +1,760 @@
+     1→'use client'
+     2→
+     3→import { useEffect, useRef, useState } from 'react'
+     4→import { motion, useInView, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+     5→
+     6→/* ─── floating particles (deterministic positions for SSR) ─── */
+     7→function Particles() {
+     8→  const particles = Array.from({ length: 30 }, (_, i) => {
+     9→    const seed = (i * 7 + 13) % 100
+    10→    return {
+    11→      id: i,
+    12→      left: ((seed * 37 + 53) % 100),
+    13→      delay: (seed * 0.13) % 10,
+    14→      duration: 8 + (seed % 12),
+    15→      size: 1 + (seed % 3),
+    16→      color: ['#00ff88', '#00aaff', '#aa44ff', '#ff0066'][i % 4] as string,
+    17→    }
+    18→  })
+    19→
+    20→  return (
+    21→    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    22→      {particles.map(p => (
+    23→        <div
+    24→          key={p.id}
+    25→          className="particle"
+    26→          style={{
+    27→            left: `${p.left}%`,
+    28→            width: p.size,
+    29→            height: p.size,
+    30→            background: p.color,
+    31→            animationDelay: `${p.delay}s`,
+    32→            animationDuration: `${p.duration}s`,
+    33→            opacity: 0.4,
+    34→          }}
+    35→        />
+    36→      ))}
+    37→    </div>
+    38→  )
+    39→}
+    40→
+    41→/* ─── section component ─── */
+    42→function PortfolioSection({
+    43→  number,
+    44→  title,
+    45→  color,
+    46→  children,
+    47→}: {
+    48→  number: string
+    49→  title: string
+    50→  color: string
+    51→  children: React.ReactNode
+    52→}) {
+    53→  const ref = useRef(null)
+    54→  const isInView = useInView(ref, { once: true, margin: '-100px' })
+    55→
+    56→  return (
+    57→    <motion.section
+    58→      ref={ref}
+    59→      initial={{ opacity: 0, y: 80 }}
+    60→      animate={isInView ? { opacity: 1, y: 0 } : {}}
+    61→      transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+    62→      className="relative py-16 md:py-24"
+    63→    >
+    64→      {/* section header */}
+    65→      <div className="flex items-center gap-4 md:gap-6 mb-10 md:mb-14">
+    66→        <span className="section-number">[{number}]</span>
+    67→        <div className="flex items-center gap-3">
+    68→          <motion.div
+    69→            initial={{ width: 0 }}
+    70→            animate={isInView ? { width: 40 } : {}}
+    71→            transition={{ duration: 0.6, delay: 0.2 }}
+    72→            className="h-[2px]"
+    73→            style={{ background: color }}
+    74→          />
+    75→          <h2
+    76→            className="text-3xl md:text-5xl font-bold tracking-tight"
+    77→            style={{
+    78→              color,
+    79→              textShadow: `0 0 10px ${color}66, 0 0 30px ${color}33`,
+    80→            }}
+    81→          >
+    82→            {title}
+    83→          </h2>
+    84→          <motion.div
+    85→            initial={{ width: 0 }}
+    86→            animate={isInView ? { width: '100%' } : {}}
+    87→            transition={{ duration: 0.8, delay: 0.4 }}
+    88→            className="h-[1px] max-w-[200px]"
+    89→            style={{ background: `${color}44` }}
+    90→          />
+    91→        </div>
+    92→      </div>
+    93→
+    94→      {/* content */}
+    95→      {children}
+    96→    </motion.section>
+    97→  )
+    98→}
+    99→
+   100→/* ─── portfolio card with optional image ─── */
+   101→function PortfolioCard({
+   102→  title,
+   103→  subtitle,
+   104→  color,
+   105→  index,
+   106→  image,
+   107→  onClick,
+   108→}: {
+   109→  title: string
+   110→  subtitle: string
+   111→  color: string
+   112→  index: number
+   113→  image?: string
+   114→  onClick?: () => void
+   115→}) {
+   116→  const ref = useRef(null)
+   117→  const isInView = useInView(ref, { once: true, margin: '-50px' })
+   118→
+   119→  return (
+   120→    <motion.div
+   121→      ref={ref}
+   122→      initial={{ opacity: 0, y: 50, scale: 0.95 }}
+   123→      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+   124→      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
+   125→      className="portfolio-item corner-decor rounded-lg group cursor-pointer"
+   126→      onClick={onClick}
+   127→    >
+   128→      {/* image area */}
+   129→      <div
+   130→        className="aspect-[4/3] relative overflow-hidden"
+   131→        style={!image ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
+   132→      >
+   133→        {image ? (
+   134→          <>
+   135→            <img
+   136→              src={image}
+   137→              alt={title}
+   138→              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+   139→            />
+   140→            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+   141→          </>
+   142→        ) : (
+   143→          <>
+   144→            <div className="absolute inset-0 cyber-grid opacity-40" />
+   145→            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+   146→              <div
+   147→                className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+   148→                style={{ borderColor: `${color}66` }}
+   149→              >
+   150→                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   151→                  <path d="M12 5v14M5 12h14" />
+   152→                </svg>
+   153→              </div>
+   154→              <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
+   155→                Upload Content
+   156→              </span>
+   157→            </div>
+   158→          </>
+   159→        )}
+   160→
+   161→        {/* hover overlay */}
+   162→        <div
+   163→          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+   164→          style={{
+   165→            background: `linear-gradient(180deg, transparent 40%, ${color}15 100%)`,
+   166→          }}
+   167→        />
+   168→      </div>
+   169→
+   170→      {/* card info */}
+   171→      <div className="p-4 md:p-5">
+   172→        <div className="flex items-center gap-2 mb-1">
+   173→          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+   174→          <h3 className="font-semibold text-sm md:text-base tracking-wide">{title}</h3>
+   175→        </div>
+   176→        <p className="text-xs md:text-sm text-white/40 pl-4">{subtitle}</p>
+   177→      </div>
+   178→    </motion.div>
+   179→  )
+   180→}
+   181→
+   182→/* ─── lightbox modal ─── */
+   183→function Lightbox({
+   184→  images,
+   185→  titles,
+   186→  initialIndex,
+   187→  onClose,
+   188→}: {
+   189→  images: string[]
+   190→  titles: string[]
+   191→  initialIndex: number
+   192→  onClose: () => void
+   193→}) {
+   194→  const [current, setCurrent] = useState(initialIndex)
+   195→
+   196→  useEffect(() => {
+   197→    const handleKey = (e: KeyboardEvent) => {
+   198→      if (e.key === 'Escape') onClose()
+   199→      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, images.length - 1))
+   200→      if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0))
+   201→    }
+   202→    window.addEventListener('keydown', handleKey)
+   203→    return () => window.removeEventListener('keydown', handleKey)
+   204→  }, [images.length, onClose])
+   205→
+   206→  return (
+   207→    <AnimatePresence>
+   208→      <motion.div
+   209→        initial={{ opacity: 0 }}
+   210→        animate={{ opacity: 1 }}
+   211→        exit={{ opacity: 0 }}
+   212→        className="fixed inset-0 z-[9999] bg-[#0a0a0f]/95 backdrop-blur-xl flex items-center justify-center p-4"
+   213→        onClick={onClose}
+   214→      >
+   215→        {/* close button */}
+   216→        <button
+   217→          onClick={onClose}
+   218→          className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all z-10"
+   219→        >
+   220→          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   221→            <path d="M18 6L6 18M6 6l12 12" />
+   222→          </svg>
+   223→        </button>
+   224→
+   225→        {/* counter */}
+   226→        <div className="absolute top-6 left-6 font-mono text-xs text-white/30 tracking-widest">
+   227→          [{current + 1}/{images.length}]
+   228→        </div>
+   229→
+   230→        {/* image */}
+   231→        <motion.div
+   232→          key={current}
+   233→          initial={{ opacity: 0, scale: 0.9 }}
+   234→          animate={{ opacity: 1, scale: 1 }}
+   235→          transition={{ duration: 0.3 }}
+   236→          className="max-w-5xl w-full max-h-[80vh] relative"
+   237→          onClick={e => e.stopPropagation()}
+   238→        >
+   239→          <img
+   240→            src={images[current]}
+   241→            alt={titles[current]}
+   242→            className="w-full h-full object-contain rounded-lg"
+   243→          />
+   244→          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0f] to-transparent rounded-b-lg">
+   245→            <p className="font-mono text-sm text-white/60">{titles[current]}</p>
+   246→          </div>
+   247→        </motion.div>
+   248→
+   249→        {/* nav buttons */}
+   250→        {current > 0 && (
+   251→          <button
+   252→            onClick={(e) => { e.stopPropagation(); setCurrent(c => c - 1) }}
+   253→            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+   254→          >
+   255→            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   256→              <path d="M15 18l-6-6 6-6" />
+   257→            </svg>
+   258→          </button>
+   259→        )}
+   260→        {current < images.length - 1 && (
+   261→          <button
+   262→            onClick={(e) => { e.stopPropagation(); setCurrent(c => c + 1) }}
+   263→            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+   264→          >
+   265→            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   266→              <path d="M9 18l6-6-6-6" />
+   267→            </svg>
+   268→          </button>
+   269→        )}
+   270→      </motion.div>
+   271→    </AnimatePresence>
+   272→  )
+   273→}
+   274→
+   275→/* ─── project showcase (1 main image + 5 thumbnails) ─── */
+   276→function ProjectShowcase({
+   277→  title,
+   278→  description,
+   279→  tags,
+   280→  images,
+   281→  imageTitles,
+   282→  color,
+   283→  liveUrl,
+   284→}: {
+   285→  title: string
+   286→  description: string
+   287→  tags: string[]
+   288→  images: string[]
+   289→  imageTitles: string[]
+   290→  color: string
+   291→  liveUrl?: string
+   292→}) {
+   293→  const ref = useRef(null)
+   294→  const isInView = useInView(ref, { once: true, margin: '-50px' })
+   295→  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+   296→  const [mainImage, setMainImage] = useState(0)
+   297→
+   298→  // Show up to 6 images (1 main + 5 thumbnails)
+   299→  const displayImages = images.slice(0, 6)
+   300→  const displayTitles = imageTitles.slice(0, 6)
+   301→  const thumbs = displayImages.slice(1) // 5 thumbnails
+   302→
+   303→  return (
+   304→    <>
+   305→      <motion.div
+   306→        ref={ref}
+   307→        initial={{ opacity: 0, y: 60 }}
+   308→        animate={isInView ? { opacity: 1, y: 0 } : {}}
+   309→        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+   310→        className="relative"
+   311→      >
+   312→        {/* project info bar */}
+   313→        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+   314→          <div>
+   315→            <h3 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color }}>
+   316→              {title}
+   317→            </h3>
+   318→            <p className="text-white/40 text-sm mt-1">{description}</p>
+   319→          </div>
+   320→          <div className="flex items-center gap-3 flex-wrap">
+   321→            {tags.map(tag => (
+   322→              <span
+   323→                key={tag}
+   324→                className="px-3 py-1 rounded-full text-xs font-mono tracking-wider border"
+   325→                style={{ borderColor: `${color}44`, color: `${color}aa`, background: `${color}08` }}
+   326→              >
+   327→                {tag}
+   328→              </span>
+   329→            ))}
+   330→            {liveUrl && (
+   331→              <a
+   332→                href={liveUrl}
+   333→                target="_blank"
+   334→                rel="noopener noreferrer"
+   335→                className="px-4 py-1.5 rounded-full text-xs font-mono tracking-wider border transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,170,255,0.3)]"
+   336→                style={{ borderColor: `${color}66`, color }}
+   337→              >
+   338→                LIVE →
+   339→              </a>
+   340→            )}
+   341→          </div>
+   342→        </div>
+   343→
+   344→        {/* main image + thumbnails layout */}
+   345→        <div className="flex flex-col lg:flex-row gap-3">
+   346→          {/* main image */}
+   347→          <motion.div
+   348→            initial={{ opacity: 0, scale: 0.95 }}
+   349→            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+   350→            transition={{ duration: 0.6 }}
+   351→            className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 flex-1"
+   352→            onClick={() => setLightboxIndex(mainImage)}
+   353→          >
+   354→            <img
+   355→              src={displayImages[mainImage]}
+   356→              alt={displayTitles[mainImage]}
+   357→              className="w-full h-[250px] sm:h-[350px] lg:h-[400px] object-cover object-top transition-all duration-700 group-hover:scale-[1.03] group-hover:brightness-110"
+   358→            />
+   359→            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/70 via-transparent to-transparent" />
+   360→            <div className="absolute bottom-0 left-0 right-0 p-4">
+   361→              <p className="font-mono text-sm" style={{ color }}>{displayTitles[mainImage]}</p>
+   362→              <p className="font-mono text-xs text-white/30 mt-1">Click to view full size</p>
+   363→            </div>
+   364→            {/* glow on hover */}
+   365→            <div
+   366→              className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+   367→              style={{ boxShadow: `inset 0 0 30px ${color}22, 0 0 20px ${color}11` }}
+   368→            />
+   369→          </motion.div>
+   370→
+   371→          {/* thumbnails column */}
+   372→          <div className="flex flex-row lg:flex-col gap-2 lg:w-[200px] xl:w-[240px]">
+   373→            {thumbs.map((thumb, i) => {
+   374→              const realIndex = i + 1 // offset by 1 since main is 0
+   375→              const isActive = mainImage === realIndex
+   376→              return (
+   377→                <motion.div
+   378→                  key={realIndex}
+   379→                  initial={{ opacity: 0, x: 20 }}
+   380→                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+   381→                  transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
+   382→                  className={`relative group cursor-pointer overflow-hidden rounded-lg border flex-1 transition-all duration-300 ${
+   383→                    isActive ? `border-[${color}88]` : 'border-white/5 hover:border-white/20'
+   384→                  }`}
+   385→                  style={isActive ? { borderColor: `${color}88`, boxShadow: `0 0 15px ${color}22` } : undefined}
+   386→                  onClick={() => setMainImage(realIndex)}
+   387→                >
+   388→                  <img
+   389→                    src={thumb}
+   390→                    alt={displayTitles[realIndex]}
+   391→                    className="w-full h-[70px] sm:h-[80px] lg:h-[70px] object-cover object-top transition-all duration-500 group-hover:brightness-125"
+   392→                    style={isActive ? { filter: 'brightness(1.2)' } : undefined}
+   393→                  />
+   394→                  <div className="absolute inset-0 bg-[#0a0a0f]/30 group-hover:bg-transparent transition-all duration-300" />
+   395→                  {/* active indicator dot */}
+   396→                  {isActive && (
+   397→                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+   398→                  )}
+   399→                </motion.div>
+   400→              )
+   401→            })}
+   402→          </div>
+   403→        </div>
+   404→      </motion.div>
+   405→
+   406→      {/* lightbox */}
+   407→      {lightboxIndex !== null && (
+   408→        <Lightbox
+   409→          images={displayImages}
+   410→          titles={displayTitles}
+   411→          initialIndex={lightboxIndex}
+   412→          onClose={() => setLightboxIndex(null)}
+   413→        />
+   414→      )}
+   415→    </>
+   416→  )
+   417→}
+   418→
+   419→/* ─── hero section ─── */
+   420→function Hero() {
+   421→  const [displayText, setDisplayText] = useState('')
+   422→  const fullText = '> initializing b3k1c.exe...'
+   423→  const [showSubtext, setShowSubtext] = useState(false)
+   424→
+   425→  useEffect(() => {
+   426→    let i = 0
+   427→    const interval = setInterval(() => {
+   428→      if (i <= fullText.length) {
+   429→        setDisplayText(fullText.slice(0, i))
+   430→        i++
+   431→      } else {
+   432→        clearInterval(interval)
+   433→        setTimeout(() => setShowSubtext(true), 300)
+   434→      }
+   435→    }, 60)
+   436→    return () => clearInterval(interval)
+   437→  }, [])
+   438→
+   439→  const { scrollYProgress } = useScroll()
+   440→  const logoY = useTransform(scrollYProgress, [0, 0.3], [0, -100])
+   441→  const logoOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
+   442→  const logoScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8])
+   443→
+   444→  return (
+   445→    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+   446→      {/* radial glow */}
+   447→      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-20"
+   448→        style={{ background: 'radial-gradient(circle, #00ff8815 0%, transparent 70%)' }}
+   449→      />
+   450→
+   451→      {/* logo */}
+   452→      <motion.div
+   453→        style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
+   454→        className="relative z-10 mb-8"
+   455→      >
+   456→        <div className="relative logo-ring p-3">
+   457→          <img
+   458→            src="/b3k1c-logo.png"
+   459→            alt="b3k1c.exe logo"
+   460→            className="w-32 h-32 md:w-48 md:h-48 object-contain logo-hologram rounded-full"
+   461→          />
+   462→        </div>
+   463→      </motion.div>
+   464→
+   465→      {/* main title */}
+   466→      <motion.div
+   467→        initial={{ opacity: 0, y: 30 }}
+   468→        animate={{ opacity: 1, y: 0 }}
+   469→        transition={{ duration: 0.8, delay: 0.5 }}
+   470→        className="relative z-10 text-center"
+   471→      >
+   472→        <h1
+   473→          className="glitch-text text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter"
+   474→          data-text="b3k1c.exe"
+   475→          style={{
+   476→            fontFamily: 'var(--font-geist-mono)',
+   477→            background: 'linear-gradient(135deg, #00ff88, #00aaff)',
+   478→            WebkitBackgroundClip: 'text',
+   479→            WebkitTextFillColor: 'transparent',
+   480→          }}
+   481→        >
+   482→          b3k1c.exe
+   483→        </h1>
+   484→
+   485→        {/* typing subtitle */}
+   486→        <div className="mt-6 h-8 flex items-center justify-center">
+   487→          <span
+   488→            className="font-mono text-sm md:text-base tracking-widest"
+   489→            style={{ color: '#00ff8888' }}
+   490→          >
+   491→            {displayText}
+   492→          </span>
+   493→          {displayText.length <= fullText.length && (
+   494→            <span className="cursor-blink ml-0.5" />
+   495→          )}
+   496→        </div>
+   497→
+   498→        {/* secondary subtitle */}
+   499→        <motion.p
+   500→          initial={{ opacity: 0 }}
+   501→          animate={showSubtext ? { opacity: 1 } : {}}
+   502→          transition={{ duration: 0.6 }}
+   503→          className="mt-4 text-white/30 text-xs md:text-sm tracking-[0.3em] uppercase font-mono"
+   504→        >
+   505→          {'// digital creative portfolio'}
+   506→        </motion.p>
+   507→      </motion.div>
+   508→
+   509→      {/* scroll indicator */}
+   510→      <motion.div
+   511→        initial={{ opacity: 0 }}
+   512→        animate={{ opacity: 1 }}
+   513→        transition={{ delay: 3, duration: 1 }}
+   514→        className="absolute bottom-10 z-10 flex flex-col items-center gap-2"
+   515→      >
+   516→        <span className="text-[10px] tracking-[0.4em] text-white/20 uppercase font-mono">scroll</span>
+   517→        <motion.div
+   518→          animate={{ y: [0, 8, 0] }}
+   519→          transition={{ duration: 1.5, repeat: Infinity }}
+   520→          className="w-[1px] h-8"
+   521→          style={{ background: 'linear-gradient(180deg, #00ff8866, transparent)' }}
+   522→        />
+   523→      </motion.div>
+   524→    </section>
+   525→  )
+   526→}
+   527→
+   528→/* ─── nav bar ─── */
+   529→function Navbar() {
+   530→  const [scrolled, setScrolled] = useState(false)
+   531→
+   532→  useEffect(() => {
+   533→    const handler = () => setScrolled(window.scrollY > 100)
+   534→    window.addEventListener('scroll', handler)
+   535→    return () => window.removeEventListener('scroll', handler)
+   536→  }, [])
+   537→
+   538→  const sections = [
+   539→    { label: 'DESIGNS', href: '#designs', color: '#00ff88' },
+   540→    { label: 'WEB SITES', href: '#websites', color: '#00aaff' },
+   541→    { label: 'FOTO / VIDEO', href: '#foto', color: '#aa44ff' },
+   542→    { label: 'GAME DEV', href: '#games', color: '#ff0066' },
+   543→  ]
+   544→
+   545→  return (
+   546→    <motion.nav
+   547→      initial={{ y: -80 }}
+   548→      animate={{ y: 0 }}
+   549→      transition={{ duration: 0.6, delay: 2.5 }}
+   550→      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+   551→        scrolled
+   552→          ? 'bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-[#00ff8815]'
+   553→          : 'bg-transparent'
+   554→      }`}
+   555→    >
+   556→      <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+   557→        <a href="#" className="font-mono text-sm tracking-widest" style={{ color: '#00ff88' }}>
+   558→          b3k1c.exe
+   559→        </a>
+   560→        <div className="hidden md:flex items-center gap-8">
+   561→          {sections.map(s => (
+   562→            <a
+   563→              key={s.href}
+   564→              href={s.href}
+   565→              className="font-mono text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors duration-300 relative group"
+   566→            >
+   567→              {s.label}
+   568→              <span
+   569→                className="absolute -bottom-1 left-0 w-0 h-[1px] group-hover:w-full transition-all duration-300"
+   570→                style={{ background: s.color }}
+   571→              />
+   572→            </a>
+   573→          ))}
+   574→        </div>
+   575→        {/* mobile menu dots */}
+   576→        <div className="flex md:hidden gap-2">
+   577→          {sections.map(s => (
+   578→            <a
+   579→              key={s.href}
+   580→              href={s.href}
+   581→              className="w-2 h-2 rounded-full transition-all duration-300 hover:scale-150"
+   582→              style={{ background: s.color + '66' }}
+   583→            />
+   584→          ))}
+   585→        </div>
+   586→      </div>
+   587→    </motion.nav>
+   588→  )
+   589→}
+   590→
+   591→/* ─── footer ─── */
+   592→function Footer() {
+   593→  return (
+   594→    <footer className="relative py-12 border-t border-[#00ff8815]">
+   595→      <div className="max-w-7xl mx-auto px-4 md:px-8">
+   596→        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+   597→          <div className="font-mono text-sm text-white/20">
+   598→            <span style={{ color: '#00ff8866' }}>b3k1c.exe</span>{' // all rights reserved'}
+   599→          </div>
+   600→          <div className="flex items-center gap-6">
+   601→            {['Instagram', 'Behance', 'GitHub', 'Dribbble'].map(social => (
+   602→              <a
+   603→                key={social}
+   604→                href="#"
+   605→                className="font-mono text-xs tracking-widest text-white/20 hover:text-[#00ff88] transition-colors duration-300"
+   606→              >
+   607→                {social}
+   608→              </a>
+   609→            ))}
+   610→          </div>
+   611→          <div className="font-mono text-xs text-white/10">
+   612→            v1.0.0 // built with passion
+   613→          </div>
+   614→        </div>
+   615→      </div>
+   616→    </footer>
+   617→  )
+   618→}
+   619→
+   620→/* ═══════════════════════════════════════
+   621→   MAIN PAGE
+   622→   ═══════════════════════════════════════ */
+   623→export default function Home() {
+   624→  const containerRef = useRef(null)
+   625→
+   626→  /* placeholder cards data */
+   627→  const designCards = [
+   628→    { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
+   629→    { title: 'Poster Design', subtitle: 'Print & Digital' },
+   630→    { title: 'UI/UX Concept', subtitle: 'Mobile & Web' },
+   631→    { title: 'Illustration', subtitle: 'Digital Art & Vector' },
+   632→    { title: 'Typography', subtitle: 'Custom Type Design' },
+   633→    { title: 'Packaging', subtitle: 'Product Design' },
+   634→  ]
+   635→
+   636→  const fotoCards = [
+   637→    { title: 'Street Photography', subtitle: 'Urban Exploration' },
+   638→    { title: 'Product Shoot', subtitle: 'Studio Setup' },
+   639→    { title: 'Music Video', subtitle: 'Directing & Editing' },
+   640→    { title: 'Short Film', subtitle: 'Cinematography' },
+   641→    { title: 'Motion Graphics', subtitle: 'After Effects' },
+   642→  ]
+   643→
+   644→  const gameCards = [
+   645→    { title: 'Indie Game', subtitle: 'Unity / Unreal' },
+   646→    { title: 'Game Concept', subtitle: 'Level Design' },
+   647→    { title: '3D Assets', subtitle: 'Blender & ZBrush' },
+   648→    { title: 'Game UI', subtitle: 'HUD & Menus' },
+   649→  ]
+   650→
+   651→  /* Tomek Instalacije project data */
+   652→  const tomekImages = [
+   653→    '/portfolio/tomek-instalacije/section-1.png',
+   654→    '/portfolio/tomek-instalacije/section-2.png',
+   655→    '/portfolio/tomek-instalacije/section-3.png',
+   656→    '/portfolio/tomek-instalacije/section-4.png',
+   657→    '/portfolio/tomek-instalacije/section-5.png',
+   658→    '/portfolio/tomek-instalacije/section-6.png',
+   659→    '/portfolio/tomek-instalacije/section-7.png',
+   660→  ]
+   661→  const tomekTitles = [
+   662→    'Hero Section',
+   663→    'Landing Page',
+   664→    'Stats & Services',
+   665→    'Process Steps',
+   666→    'Project Gallery',
+   667→    'Services Detail',
+   668→    'Contact Page',
+   669→  ]
+   670→
+   671→  return (
+   672→    <div ref={containerRef} className="scanlines noise-bg relative bg-[#0a0a0f] min-h-screen">
+   673→      <Particles />
+   674→      <Navbar />
+   675→      <Hero />
+   676→
+   677→      {/* ─── MAIN CONTENT ─── */}
+   678→      <main className="relative z-10 max-w-7xl mx-auto px-4 md:px-8">
+   679→
+   680→        {/* SECTION 01 — DESIGNS */}
+   681→        <div id="designs" className="scroll-mt-24">
+   682→          <PortfolioSection number="01" title="DESIGNS" color="#00ff88">
+   683→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   684→              {designCards.map((card, i) => (
+   685→                <PortfolioCard key={card.title} {...card} color="#00ff88" index={i} />
+   686→              ))}
+   687→            </div>
+   688→          </PortfolioSection>
+   689→        </div>
+   690→
+   691→        {/* SECTION 02 — WEB SITES */}
+   692→        <div id="websites" className="scroll-mt-24">
+   693→          <PortfolioSection number="02" title="WEB SITES" color="#00aaff">
+   694→            {/* Featured project: Tomek Instalacije */}
+   695→            <ProjectShowcase
+   696→              title="Tomek Instalacije"
+   697→              description="Full website for plumbing & heating company — dark theme, responsive design, gallery, contact form"
+   698→              tags={['Next.js', 'TypeScript', 'Tailwind', 'Responsive']}
+   699→              images={tomekImages}
+   700→              imageTitles={tomekTitles}
+   701→              color="#00aaff"
+   702→            />
+   703→          </PortfolioSection>
+   704→        </div>
+   705→
+   706→        {/* SECTION 03 — FOTO / VIDEO */}
+   707→        <div id="foto" className="scroll-mt-24">
+   708→          <PortfolioSection number="03" title="FOTO / VIDEO" color="#aa44ff">
+   709→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   710→              {fotoCards.map((card, i) => (
+   711→                <PortfolioCard key={card.title} {...card} color="#aa44ff" index={i} />
+   712→              ))}
+   713→            </div>
+   714→          </PortfolioSection>
+   715→        </div>
+   716→
+   717→        {/* SECTION 04 — GAME DEVELOPING */}
+   718→        <div id="games" className="scroll-mt-24">
+   719→          <PortfolioSection number="04" title="GAME DEVELOPING" color="#ff0066">
+   720→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+   721→              {gameCards.map((card, i) => (
+   722→                <PortfolioCard key={card.title} {...card} color="#ff0066" index={i} />
+   723→              ))}
+   724→            </div>
+   725→          </PortfolioSection>
+   726→        </div>
+   727→
+   728→        {/* ─── CONTACT / CTA ─── */}
+   729→        <PortfolioSection number="05" title="CONTACT" color="#00ff88">
+   730→          <div className="max-w-2xl">
+   731→            <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
+   732→              Interested in working together? Let&apos;s create something extraordinary.
+   733→              Drop me a message and let&apos;s bring your vision to life.
+   734→            </p>
+   735→            <div className="flex flex-wrap gap-4">
+   736→              <a
+   737→                href="mailto:hello@b3k1c.exe"
+   738→                className="inline-flex items-center gap-3 px-6 py-3 rounded border font-mono text-sm tracking-widest transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,136,0.2)]"
+   739→                style={{ borderColor: '#00ff8866', color: '#00ff88' }}
+   740→              >
+   741→                <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+   742→                GET IN TOUCH
+   743→              </a>
+   744→              <a
+   745→                href="#"
+   746→                className="inline-flex items-center gap-3 px-6 py-3 rounded border font-mono text-sm tracking-widest text-white/30 border-white/10 transition-all duration-300 hover:border-white/30 hover:text-white/60"
+   747→              >
+   748→                <span className="w-2 h-2 rounded-full bg-white/20" />
+   749→                DOWNLOAD CV
+   750→              </a>
+   751→            </div>
+   752→          </div>
+   753→        </PortfolioSection>
+   754→      </main>
+   755→
+   756→      <Footer />
+   757→    </div>
+   758→  )
+   759→}
+   760→
