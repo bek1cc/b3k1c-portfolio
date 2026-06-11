@@ -628,7 +628,11 @@ export default function Home() {
       subtitle: 'v0.1',
       videoSrc: '/portfolio/samp-phone/sampphone.mp4',
     },
-    { title: 'Game Project 2', subtitle: 'Coming Soon' },
+    {
+      title: 'SA:MP Case System',
+      subtitle: 'Game Feature',
+      image: '/portfolio/samp-case/klasikcase.png',
+    },
     { title: 'Game Project 3', subtitle: 'Coming Soon' },
   ]
 
