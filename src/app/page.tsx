@@ -594,6 +594,18 @@ export default function Home() {
     'Contact Page',
   ]
 
+  /* Flambe Restoran project data */
+  const flambeImages = [
+    '/portfolio/flambe-restoran/section-1.png',
+    '/portfolio/flambe-restoran/section-2.png',
+    '/portfolio/flambe-restoran/section-3.png',
+  ]
+  const flambeTitles = [
+    'Homepage',
+    'Menu & Content',
+    'Gallery & Contact',
+  ]
+
   /* WEB SITES section cards */
   const websiteCards = [
     {
@@ -603,7 +615,13 @@ export default function Home() {
       galleryImages: tomekImages,
       galleryTitles: tomekTitles,
     },
-    { title: 'Web Project 2', subtitle: 'Coming Soon' },
+    {
+      title: 'Flambe Restoran',
+      subtitle: 'Restaurant website',
+      videoSrc: '/portfolio/flambe-restoran/restoran.mp4',
+      galleryImages: flambeImages,
+      galleryTitles: flambeTitles,
+    },
     { title: 'Web Project 3', subtitle: 'Coming Soon' },
   ]
 

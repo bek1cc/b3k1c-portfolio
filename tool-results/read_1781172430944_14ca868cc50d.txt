@@ -1,0 +1,786 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useEffect, useRef, useState } from 'react'
+     4→     4→import { motion, useInView, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+     5→     5→
+     6→     6→/* ─── floating particles (deterministic positions for SSR) ─── */
+     7→     7→function Particles() {
+     8→     8→  const particles = Array.from({ length: 30 }, (_, i) => {
+     9→     9→    const seed = (i * 7 + 13) % 100
+    10→    10→    return {
+    11→    11→      id: i,
+    12→    12→      left: ((seed * 37 + 53) % 100),
+    13→    13→      delay: (seed * 0.13) % 10,
+    14→    14→      duration: 8 + (seed % 12),
+    15→    15→      size: 1 + (seed % 3),
+    16→    16→      color: ['#00ff88', '#00aaff', '#aa44ff', '#ff0066'][i % 4] as string,
+    17→    17→    }
+    18→    18→  })
+    19→    19→
+    20→    20→  return (
+    21→    21→    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    22→    22→      {particles.map(p => (
+    23→    23→        <div
+    24→    24→          key={p.id}
+    25→    25→          className="particle"
+    26→    26→          style={{
+    27→    27→            left: `${p.left}%`,
+    28→    28→            width: p.size,
+    29→    29→            height: p.size,
+    30→    30→            background: p.color,
+    31→    31→            animationDelay: `${p.delay}s`,
+    32→    32→            animationDuration: `${p.duration}s`,
+    33→    33→            opacity: 0.4,
+    34→    34→          }}
+    35→    35→        />
+    36→    36→      ))}
+    37→    37→    </div>
+    38→    38→  )
+    39→    39→}
+    40→    40→
+    41→    41→/* ─── section component ─── */
+    42→    42→function PortfolioSection({
+    43→    43→  number,
+    44→    44→  title,
+    45→    45→  color,
+    46→    46→  children,
+    47→    47→}: {
+    48→    48→  number: string
+    49→    49→  title: string
+    50→    50→  color: string
+    51→    51→  children: React.ReactNode
+    52→    52→}) {
+    53→    53→  const ref = useRef(null)
+    54→    54→  const isInView = useInView(ref, { once: true, margin: '-100px' })
+    55→    55→
+    56→    56→  return (
+    57→    57→    <motion.section
+    58→    58→      ref={ref}
+    59→    59→      initial={{ opacity: 0, y: 80 }}
+    60→    60→      animate={isInView ? { opacity: 1, y: 0 } : {}}
+    61→    61→      transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+    62→    62→      className="relative py-16 md:py-24"
+    63→    63→    >
+    64→    64→      {/* section header */}
+    65→    65→      <div className="flex items-center gap-4 md:gap-6 mb-10 md:mb-14">
+    66→    66→        <span className="section-number">[{number}]</span>
+    67→    67→        <div className="flex items-center gap-3">
+    68→    68→          <motion.div
+    69→    69→            initial={{ width: 0 }}
+    70→    70→            animate={isInView ? { width: 40 } : {}}
+    71→    71→            transition={{ duration: 0.6, delay: 0.2 }}
+    72→    72→            className="h-[2px]"
+    73→    73→            style={{ background: color }}
+    74→    74→          />
+    75→    75→          <h2
+    76→    76→            className="text-3xl md:text-5xl font-bold tracking-tight"
+    77→    77→            style={{
+    78→    78→              color,
+    79→    79→              textShadow: `0 0 20px ${color}44`,
+    80→    80→            }}
+    81→    81→          >
+    82→    82→            {title}
+    83→    83→          </h2>
+    84→    84→          <motion.div
+    85→    85→            initial={{ width: 0 }}
+    86→    86→            animate={isInView ? { width: '100%' } : {}}
+    87→    87→            transition={{ duration: 0.8, delay: 0.4 }}
+    88→    88→            className="h-[1px] max-w-[200px]"
+    89→    89→            style={{ background: `${color}44` }}
+    90→    90→          />
+    91→    91→        </div>
+    92→    92→      </div>
+    93→    93→
+    94→    94→      {/* content */}
+    95→    95→      {children}
+    96→    96→    </motion.section>
+    97→    97→  )
+    98→    98→}
+    99→    99→
+   100→   100→/* ─── lightbox modal ─── */
+   101→   101→function Lightbox({
+   102→   102→  images,
+   103→   103→  titles,
+   104→   104→  initialIndex,
+   105→   105→  onClose,
+   106→   106→}: {
+   107→   107→  images: string[]
+   108→   108→  titles: string[]
+   109→   109→  initialIndex: number
+   110→   110→  onClose: () => void
+   111→   111→}) {
+   112→   112→  const [current, setCurrent] = useState(initialIndex)
+   113→   113→
+   114→   114→  useEffect(() => {
+   115→   115→    const handleKey = (e: KeyboardEvent) => {
+   116→   116→      if (e.key === 'Escape') onClose()
+   117→   117→      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, images.length - 1))
+   118→   118→      if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0))
+   119→   119→    }
+   120→   120→    window.addEventListener('keydown', handleKey)
+   121→   121→    return () => window.removeEventListener('keydown', handleKey)
+   122→   122→  }, [images.length, onClose])
+   123→   123→
+   124→   124→  return (
+   125→   125→    <AnimatePresence>
+   126→   126→      <motion.div
+   127→   127→        initial={{ opacity: 0 }}
+   128→   128→        animate={{ opacity: 1 }}
+   129→   129→        exit={{ opacity: 0 }}
+   130→   130→        className="fixed inset-0 z-[9999] bg-[#0a0a0f]/95 backdrop-blur-xl flex items-center justify-center p-4"
+   131→   131→        onClick={onClose}
+   132→   132→      >
+   133→   133→        {/* close button */}
+   134→   134→        <button
+   135→   135→          onClick={onClose}
+   136→   136→          className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all z-10"
+   137→   137→        >
+   138→   138→          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   139→   139→            <path d="M18 6L6 18M6 6l12 12" />
+   140→   140→          </svg>
+   141→   141→        </button>
+   142→   142→
+   143→   143→        {/* counter */}
+   144→   144→        <div className="absolute top-6 left-6 font-mono text-xs text-white/30 tracking-widest">
+   145→   145→          [{current + 1}/{images.length}]
+   146→   146→        </div>
+   147→   147→
+   148→   148→        {/* image */}
+   149→   149→        <motion.div
+   150→   150→          key={current}
+   151→   151→          initial={{ opacity: 0, scale: 0.9 }}
+   152→   152→          animate={{ opacity: 1, scale: 1 }}
+   153→   153→          transition={{ duration: 0.3 }}
+   154→   154→          className="max-w-5xl w-full max-h-[80vh] relative"
+   155→   155→          onClick={e => e.stopPropagation()}
+   156→   156→        >
+   157→   157→          <img
+   158→   158→            src={images[current]}
+   159→   159→            alt={titles[current]}
+   160→   160→            className="w-full h-full object-contain rounded-lg"
+   161→   161→          />
+   162→   162→          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0f] to-transparent rounded-b-lg">
+   163→   163→            <p className="font-mono text-sm text-white/60">{titles[current]}</p>
+   164→   164→          </div>
+   165→   165→        </motion.div>
+   166→   166→
+   167→   167→        {/* nav buttons */}
+   168→   168→        {current > 0 && (
+   169→   169→          <button
+   170→   170→            onClick={(e) => { e.stopPropagation(); setCurrent(c => c - 1) }}
+   171→   171→            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+   172→   172→          >
+   173→   173→            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   174→   174→              <path d="M15 18l-6-6 6-6" />
+   175→   175→            </svg>
+   176→   176→          </button>
+   177→   177→        )}
+   178→   178→        {current < images.length - 1 && (
+   179→   179→          <button
+   180→   180→            onClick={(e) => { e.stopPropagation(); setCurrent(c => c + 1) }}
+   181→   181→            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+   182→   182→          >
+   183→   183→            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   184→   184→              <path d="M9 18l6-6-6-6" />
+   185→   185→            </svg>
+   186→   186→          </button>
+   187→   187→        )}
+   188→   188→      </motion.div>
+   189→   189→    </AnimatePresence>
+   190→   190→  )
+   191→   191→}
+   192→   192→
+   193→   193→/* ─── portfolio card - can show image, video, or placeholder ─── */
+   194→   194→function PortfolioCard({
+   195→   195→  title,
+   196→   196→  subtitle,
+   197→   197→  color,
+   198→   198→  index,
+   199→   199→  image,
+   200→   200→  videoSrc,
+   201→   201→  galleryImages,
+   202→   202→  galleryTitles,
+   203→   203→  onClick,
+   204→   204→}: {
+   205→   205→  title: string
+   206→   206→  subtitle: string
+   207→   207→  color: string
+   208→   208→  index: number
+   209→   209→  image?: string
+   210→   210→  videoSrc?: string
+   211→   211→  galleryImages?: string[]
+   212→   212→  galleryTitles?: string[]
+   213→   213→  onClick?: () => void
+   214→   214→}) {
+   215→   215→  const ref = useRef(null)
+   216→   216→  const isInView = useInView(ref, { once: true, margin: '-50px' })
+   217→   217→  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+   218→   218→
+   219→   219→  const hasMedia = image || videoSrc
+   220→   220→  const hasGallery = galleryImages && galleryImages.length > 0
+   221→   221→
+   222→   222→  // Build full images list for lightbox
+   223→   223→  const allImages = [
+   224→   224→    ...(image ? [image] : []),
+   225→   225→    ...(galleryImages || []),
+   226→   226→  ]
+   227→   227→  const allTitles = [
+   228→   228→    ...(image ? [title] : []),
+   229→   229→    ...(galleryTitles || []),
+   230→   230→  ]
+   231→   231→
+   232→   232→  const handleClick = () => {
+   233→   233→    if (hasGallery) {
+   234→   234→      setLightboxIndex(0)
+   235→   235→    } else if (onClick) {
+   236→   236→      onClick()
+   237→   237→    }
+   238→   238→  }
+   239→   239→
+   240→   240→  return (
+   241→   241→    <>
+   242→   242→      <motion.div
+   243→   243→        ref={ref}
+   244→   244→        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+   245→   245→        animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+   246→   246→        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
+   247→   247→        className="portfolio-item corner-decor rounded-lg group cursor-pointer"
+   248→   248→        onClick={handleClick}
+   249→   249→      >
+   250→   250→        {/* media area */}
+   251→   251→        <div
+   252→   252→          className="aspect-[4/3] relative overflow-hidden"
+   253→   253→          style={!hasMedia ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
+   254→   254→        >
+   255→   255→          {videoSrc ? (
+   256→   256→            <>
+   257→   257→              <video
+   258→   258→                src={videoSrc}
+   259→   259→                className="w-full h-full object-cover object-top"
+   260→   260→                autoPlay
+   261→   261→                loop
+   262→   262→                muted
+   263→   263→                playsInline
+   264→   264→              />
+   265→   265→              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-50" />
+   266→   266→              {/* video indicator */}
+   267→   267→              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+   268→   268→                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+   269→   269→                <span className="text-[9px] font-mono text-white/50 tracking-widest">REC</span>
+   270→   270→              </div>
+   271→   271→              {/* gallery count badge */}
+   272→   272→              {hasGallery && (
+   273→   273→                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+   274→   274→                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   275→   275→                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+   276→   276→                    <circle cx="8.5" cy="8.5" r="1.5" />
+   277→   277→                    <polyline points="21 15 16 10 5 21" />
+   278→   278→                  </svg>
+   279→   279→                  <span className="text-[9px] font-mono tracking-wider" style={{ color }}>{galleryImages!.length + 1}</span>
+   280→   280→                </div>
+   281→   281→              )}
+   282→   282→              {/* click to expand overlay */}
+   283→   283→              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+   284→   284→                <div className="px-4 py-2 rounded-lg bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/10 flex items-center gap-2">
+   285→   285→                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   286→   286→                    <polyline points="15 3 21 3 21 9" />
+   287→   287→                    <polyline points="9 21 3 21 3 15" />
+   288→   288→                    <line x1="21" y1="3" x2="14" y2="10" />
+   289→   289→                    <line x1="3" y1="21" x2="10" y2="14" />
+   290→   290→                  </svg>
+   291→   291→                  <span className="text-[10px] font-mono tracking-[0.15em]" style={{ color }}>POGLEDAJ VIŠE</span>
+   292→   292→                </div>
+   293→   293→              </div>
+   294→   294→            </>
+   295→   295→          ) : image ? (
+   296→   296→            <>
+   297→   297→              <img
+   298→   298→                src={image}
+   299→   299→                alt={title}
+   300→   300→                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+   301→   301→              />
+   302→   302→              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+   303→   303→            </>
+   304→   304→          ) : (
+   305→   305→            <>
+   306→   306→              <div className="absolute inset-0 cyber-grid opacity-40" />
+   307→   307→              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+   308→   308→                <div
+   309→   309→                  className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+   310→   310→                  style={{ borderColor: `${color}66` }}
+   311→   311→                >
+   312→   312→                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   313→   313→                    <path d="M12 5v14M5 12h14" />
+   314→   314→                  </svg>
+   315→   315→                </div>
+   316→   316→                <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
+   317→   317→                  Upload Content
+   318→   318→                </span>
+   319→   319→              </div>
+   320→   320→            </>
+   321→   321→          )}
+   322→   322→
+   323→   323→          {/* hover glow */}
+   324→   324→          <div
+   325→   325→            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+   326→   326→            style={{
+   327→   327→              background: `linear-gradient(180deg, transparent 40%, ${color}15 100%)`,
+   328→   328→            }}
+   329→   329→          />
+   330→   330→        </div>
+   331→   331→
+   332→   332→        {/* card info */}
+   333→   333→        <div className="p-4 md:p-5">
+   334→   334→          <div className="flex items-center justify-between">
+   335→   335→            <div className="flex items-center gap-2">
+   336→   336→              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+   337→   337→              <h3 className="font-semibold text-sm md:text-base tracking-wide">{title}</h3>
+   338→   338→            </div>
+   339→   339→            {hasGallery && (
+   340→   340→              <span className="text-[10px] font-mono tracking-wider" style={{ color: `${color}88` }}>
+   341→   341→                +{galleryImages!.length} slika
+   342→   342→              </span>
+   343→   343→            )}
+   344→   344→          </div>
+   345→   345→          <p className="text-xs md:text-sm text-white/40 pl-4 mt-0.5">{subtitle}</p>
+   346→   346→        </div>
+   347→   347→      </motion.div>
+   348→   348→
+   349→   349→      {/* lightbox */}
+   350→   350→      {lightboxIndex !== null && allImages.length > 0 && (
+   351→   351→        <Lightbox
+   352→   352→          images={allImages}
+   353→   353→          titles={allTitles}
+   354→   354→          initialIndex={lightboxIndex}
+   355→   355→          onClose={() => setLightboxIndex(null)}
+   356→   356→        />
+   357→   357→      )}
+   358→   358→    </>
+   359→   359→  )
+   360→   360→}
+   361→   361→
+   362→   362→/* ─── b3k1c LOGO (AI generated image) ─── */
+   363→   363→function B3k1cLogo() {
+   364→   364→  return (
+   365→   365→    <div className="logo-img-wrapper">
+   366→   366→      <img
+   367→   367→        src="/b3k1c-logo.png"
+   368→   368→        alt="b3k1c logo"
+   369→   369→        className="w-full h-full object-contain logo-hologram"
+   370→   370→      />
+   371→   371→    </div>
+   372→   372→  )
+   373→   373→}
+   374→   374→
+   375→   375→/* ─── hero section ─── */
+   376→   376→function Hero() {
+   377→   377→  const [displayText, setDisplayText] = useState('')
+   378→   378→  const fullText = '> initializing b3k1c.exe...'
+   379→   379→  const [showSubtext, setShowSubtext] = useState(false)
+   380→   380→
+   381→   381→  useEffect(() => {
+   382→   382→    let i = 0
+   383→   383→    const interval = setInterval(() => {
+   384→   384→      if (i <= fullText.length) {
+   385→   385→        setDisplayText(fullText.slice(0, i))
+   386→   386→        i++
+   387→   387→      } else {
+   388→   388→        clearInterval(interval)
+   389→   389→        setTimeout(() => setShowSubtext(true), 300)
+   390→   390→      }
+   391→   391→    }, 60)
+   392→   392→    return () => clearInterval(interval)
+   393→   393→  }, [])
+   394→   394→
+   395→   395→  const { scrollYProgress } = useScroll()
+   396→   396→  const logoY = useTransform(scrollYProgress, [0, 0.3], [0, -100])
+   397→   397→  const logoOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
+   398→   398→  const logoScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8])
+   399→   399→
+   400→   400→  return (
+   401→   401→    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
+   402→   402→      {/* radial glow */}
+   403→   403→      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-20"
+   404→   404→        style={{ background: 'radial-gradient(circle, #00ff8815 0%, transparent 70%)' }}
+   405→   405→      />
+   406→   406→
+   407→   407→      {/* logo */}
+   408→   408→      <motion.div
+   409→   409→        style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
+   410→   410→        className="relative z-10 mb-8"
+   411→   411→      >
+   412→   412→        <div className="relative logo-ring p-3">
+   413→   413→          <B3k1cLogo />
+   414→   414→        </div>
+   415→   415→      </motion.div>
+   416→   416→
+   417→   417→      {/* main title */}
+   418→   418→      <motion.div
+   419→   419→        initial={{ opacity: 0, y: 30 }}
+   420→   420→        animate={{ opacity: 1, y: 0 }}
+   421→   421→        transition={{ duration: 0.8, delay: 0.5 }}
+   422→   422→        className="relative z-10 text-center"
+   423→   423→      >
+   424→   424→        <h1
+   425→   425→          className="glitch-text text-5xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter"
+   426→   426→          data-text="b3k1c.exe"
+   427→   427→          style={{
+   428→   428→            fontFamily: 'var(--font-geist-mono)',
+   429→   429→            background: 'linear-gradient(135deg, #00ff88, #00aaff)',
+   430→   430→            WebkitBackgroundClip: 'text',
+   431→   431→            WebkitTextFillColor: 'transparent',
+   432→   432→          }}
+   433→   433→        >
+   434→   434→          b3k1c.exe
+   435→   435→        </h1>
+   436→   436→
+   437→   437→        {/* typing subtitle */}
+   438→   438→        <div className="mt-6 h-8 flex items-center justify-center">
+   439→   439→          <span
+   440→   440→            className="font-mono text-sm md:text-base tracking-widest"
+   441→   441→            style={{ color: '#00ff8888' }}
+   442→   442→          >
+   443→   443→            {displayText}
+   444→   444→          </span>
+   445→   445→          {displayText.length <= fullText.length && (
+   446→   446→            <span className="cursor-blink ml-0.5" />
+   447→   447→          )}
+   448→   448→        </div>
+   449→   449→
+   450→   450→        {/* secondary subtitle */}
+   451→   451→        <motion.p
+   452→   452→          initial={{ opacity: 0 }}
+   453→   453→          animate={showSubtext ? { opacity: 1 } : {}}
+   454→   454→          transition={{ duration: 0.6 }}
+   455→   455→          className="mt-4 text-white/30 text-xs md:text-sm tracking-[0.3em] uppercase font-mono"
+   456→   456→        >
+   457→   457→          {'// digital creative portfolio'}
+   458→   458→        </motion.p>
+   459→   459→      </motion.div>
+   460→   460→
+   461→   461→      {/* scroll indicator */}
+   462→   462→      <motion.div
+   463→   463→        initial={{ opacity: 0 }}
+   464→   464→        animate={{ opacity: 1 }}
+   465→   465→        transition={{ delay: 3, duration: 1 }}
+   466→   466→        className="absolute bottom-10 z-10 flex flex-col items-center gap-2"
+   467→   467→      >
+   468→   468→        <span className="text-[10px] tracking-[0.4em] text-white/20 uppercase font-mono">scroll</span>
+   469→   469→        <motion.div
+   470→   470→          animate={{ y: [0, 8, 0] }}
+   471→   471→          transition={{ duration: 1.5, repeat: Infinity }}
+   472→   472→          className="w-[1px] h-8"
+   473→   473→          style={{ background: 'linear-gradient(180deg, #00ff8866, transparent)' }}
+   474→   474→        />
+   475→   475→      </motion.div>
+   476→   476→    </section>
+   477→   477→  )
+   478→   478→}
+   479→   479→
+   480→   480→/* ─── nav bar ─── */
+   481→   481→function Navbar() {
+   482→   482→  const [scrolled, setScrolled] = useState(false)
+   483→   483→
+   484→   484→  useEffect(() => {
+   485→   485→    const handler = () => setScrolled(window.scrollY > 100)
+   486→   486→    window.addEventListener('scroll', handler)
+   487→   487→    return () => window.removeEventListener('scroll', handler)
+   488→   488→  }, [])
+   489→   489→
+   490→   490→  const sections = [
+   491→   491→    { label: 'DESIGNS', href: '#designs', color: '#00ff88' },
+   492→   492→    { label: 'WEB SITES', href: '#websites', color: '#00aaff' },
+   493→   493→    { label: 'GAME DEV', href: '#games', color: '#ff0066' },
+   494→   494→  ]
+   495→   495→
+   496→   496→  return (
+   497→   497→    <motion.nav
+   498→   498→      initial={{ y: -80 }}
+   499→   499→      animate={{ y: 0 }}
+   500→   500→      transition={{ duration: 0.6, delay: 2.5 }}
+   501→   501→      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+   502→   502→        scrolled
+   503→   503→          ? 'bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-[#00ff8815]'
+   504→   504→          : 'bg-transparent'
+   505→   505→      }`}
+   506→   506→    >
+   507→   507→      <div className="max-w-7xl mx-auto px-4 md:px-8 h-16 flex items-center justify-between">
+   508→   508→        <a href="#" className="font-mono text-sm tracking-widest" style={{ color: '#00ff88' }}>
+   509→   509→          b3k1c.exe
+   510→   510→        </a>
+   511→   511→        <div className="hidden md:flex items-center gap-8">
+   512→   512→          {sections.map(s => (
+   513→   513→            <a
+   514→   514→              key={s.href}
+   515→   515→              href={s.href}
+   516→   516→              className="font-mono text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors duration-300 relative group"
+   517→   517→            >
+   518→   518→              {s.label}
+   519→   519→              <span
+   520→   520→                className="absolute -bottom-1 left-0 w-0 h-[1px] group-hover:w-full transition-all duration-300"
+   521→   521→                style={{ background: s.color }}
+   522→   522→              />
+   523→   523→            </a>
+   524→   524→          ))}
+   525→   525→        </div>
+   526→   526→        {/* mobile menu dots */}
+   527→   527→        <div className="flex md:hidden gap-2">
+   528→   528→          {sections.map(s => (
+   529→   529→            <a
+   530→   530→              key={s.href}
+   531→   531→              href={s.href}
+   532→   532→              className="w-2 h-2 rounded-full transition-all duration-300 hover:scale-150"
+   533→   533→              style={{ background: s.color + '66' }}
+   534→   534→            />
+   535→   535→          ))}
+   536→   536→        </div>
+   537→   537→      </div>
+   538→   538→    </motion.nav>
+   539→   539→  )
+   540→   540→}
+   541→   541→
+   542→   542→/* ─── footer ─── */
+   543→   543→function Footer() {
+   544→   544→  return (
+   545→   545→    <footer className="relative py-12 border-t border-[#00ff8815]">
+   546→   546→      <div className="max-w-7xl mx-auto px-4 md:px-8">
+   547→   547→        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+   548→   548→          <div className="font-mono text-sm text-white/20">
+   549→   549→            <span style={{ color: '#00ff8866' }}>b3k1c.exe</span>{' // all rights reserved'}
+   550→   550→          </div>
+   551→   551→          <div className="flex items-center gap-6">
+   552→   552→            {['Instagram', 'Behance', 'GitHub', 'Dribbble'].map(social => (
+   553→   553→              <a
+   554→   554→                key={social}
+   555→   555→                href="#"
+   556→   556→                className="font-mono text-xs tracking-widest text-white/20 hover:text-[#00ff88] transition-colors duration-300"
+   557→   557→              >
+   558→   558→                {social}
+   559→   559→              </a>
+   560→   560→            ))}
+   561→   561→          </div>
+   562→   562→          <div className="font-mono text-xs text-white/10">
+   563→   563→            v1.0.0 // built with passion
+   564→   564→          </div>
+   565→   565→        </div>
+   566→   566→      </div>
+   567→   567→    </footer>
+   568→   568→  )
+   569→   569→}
+   570→   570→
+   571→   571→/* ═══════════════════════════════════════
+   572→   572→   MAIN PAGE
+   573→   573→   ═══════════════════════════════════════ */
+   574→   574→export default function Home() {
+   575→   575→  const containerRef = useRef(null)
+   576→   576→
+   577→   577→  /* Tomek Instalacije project data */
+   578→   578→  const tomekImages = [
+   579→   579→    '/portfolio/tomek-instalacije/section-1.png',
+   580→   580→    '/portfolio/tomek-instalacije/section-2.png',
+   581→   581→    '/portfolio/tomek-instalacije/section-3.png',
+   582→   582→    '/portfolio/tomek-instalacije/section-4.png',
+   583→   583→    '/portfolio/tomek-instalacije/section-5.png',
+   584→   584→    '/portfolio/tomek-instalacije/section-6.png',
+   585→   585→    '/portfolio/tomek-instalacije/section-7.png',
+   586→   586→  ]
+   587→   587→  const tomekTitles = [
+   588→   588→    'Hero Section',
+   589→   589→    'Landing Page',
+   590→   590→    'Stats & Services',
+   591→   591→    'Process Steps',
+   592→   592→    'Project Gallery',
+   593→   593→    'Services Detail',
+   594→   594→    'Contact Page',
+   595→   595→  ]
+   596→   596→
+   597→   597→  /* WEB SITES section cards */
+   598→   598→  const websiteCards = [
+   599→   599→    {
+   600→   600→      title: 'Tomek Instalacije',
+   601→   601→      subtitle: 'Plumbing & heating company website',
+   602→   602→      videoSrc: '/portfolio/tomek-instalacije/tomekinstalacije.mp4',
+   603→   603→      galleryImages: tomekImages,
+   604→   604→      galleryTitles: tomekTitles,
+   605→   605→    },
+   606→   606→    { title: 'Web Project 2', subtitle: 'Coming Soon' },
+   607→   607→    { title: 'Web Project 3', subtitle: 'Coming Soon' },
+   608→   608→  ]
+   609→   609→
+   610→   610→  /* DESIGNS section cards */
+   611→   611→  const designCards = [
+   612→   612→    {
+   613→   613→      title: 'Unicate OGC Logo',
+   614→   614→      subtitle: 'Logo Design',
+   615→   615→      image: '/portfolio/unicate-ogc/logo.jpg',
+   616→   616→    },
+   617→   617→    { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
+   618→   618→    { title: 'UI/UX Concept', subtitle: 'Mobile & Web' },
+   619→   619→    { title: 'Illustration', subtitle: 'Digital Art & Vector' },
+   620→   620→    { title: 'Typography', subtitle: 'Custom Type Design' },
+   621→   621→    { title: 'Packaging', subtitle: 'Product Design' },
+   622→   622→  ]
+   623→   623→
+   624→   624→  /* GAME DEV section cards */
+   625→   625→  const gameCards = [
+   626→   626→    {
+   627→   627→      title: 'SA:MP Phone System',
+   628→   628→      subtitle: 'v0.1',
+   629→   629→      videoSrc: '/portfolio/samp-phone/sampphone.mp4',
+   630→   630→    },
+   631→   631→    {
+   632→   632→      title: 'SA:MP Case System',
+   633→   633→      subtitle: 'Game Feature',
+   634→   634→      image: '/portfolio/samp-case/klasikcase.png',
+   635→   635→    },
+   636→   636→    {
+   637→   637→      title: 'SA:MP Handling Car System',
+   638→   638→      subtitle: 'Game Feature',
+   639→   639→      image: '/portfolio/samp-handling/handling.jpg',
+   640→   640→    },
+   641→   641→    {
+   642→   642→      title: 'SA:MP Kliziste System',
+   643→   643→      subtitle: 'v0.1',
+   644→   644→      videoSrc: '/portfolio/samp-kliziste/kliziste.mp4',
+   645→   645→    },
+   646→   646→    { title: 'Game Project 3', subtitle: 'Coming Soon' },
+   647→   647→  ]
+   648→   648→
+   649→   649→  return (
+   650→   650→    <div ref={containerRef} className="scanlines noise-bg relative bg-[#0a0a0f] min-h-screen">
+   651→   651→      <Particles />
+   652→   652→      <Navbar />
+   653→   653→      <Hero />
+   654→   654→
+   655→   655→      {/* ─── MAIN CONTENT ─── */}
+   656→   656→      <main className="relative z-10 max-w-7xl mx-auto px-4 md:px-8">
+   657→   657→
+   658→   658→        {/* SECTION 01 — DESIGNS */}
+   659→   659→        <div id="designs" className="scroll-mt-24">
+   660→   660→          <PortfolioSection number="01" title="DESIGNS" color="#00ff88">
+   661→   661→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   662→   662→              {designCards.map((card, i) => (
+   663→   663→                <PortfolioCard key={card.title} {...card} color="#00ff88" index={i} />
+   664→   664→              ))}
+   665→   665→            </div>
+   666→   666→          </PortfolioSection>
+   667→   667→        </div>
+   668→   668→
+   669→   669→        {/* SECTION 02 — WEB SITES */}
+   670→   670→        <div id="websites" className="scroll-mt-24">
+   671→   671→          <PortfolioSection number="02" title="WEB SITES" color="#00aaff">
+   672→   672→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   673→   673→              {websiteCards.map((card, i) => (
+   674→   674→                <PortfolioCard key={card.title} {...card} color="#00aaff" index={i} />
+   675→   675→              ))}
+   676→   676→            </div>
+   677→   677→          </PortfolioSection>
+   678→   678→        </div>
+   679→   679→
+   680→   680→        {/* SECTION 03 — GAME DEVELOPING */}
+   681→   681→        <div id="games" className="scroll-mt-24">
+   682→   682→          <PortfolioSection number="03" title="GAME DEVELOPING" color="#ff0066">
+   683→   683→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+   684→   684→              {gameCards.map((card, i) => (
+   685→   685→                <PortfolioCard key={card.title} {...card} color="#ff0066" index={i} />
+   686→   686→              ))}
+   687→   687→            </div>
+   688→   688→          </PortfolioSection>
+   689→   689→        </div>
+   690→   690→
+   691→   691→        {/* ─── CONTACT / CTA ─── */}
+   692→   692→        <PortfolioSection number="04" title="CONTACT" color="#00ff88">
+   693→   693→          <div className="max-w-3xl">
+   694→   694→            <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
+   695→   695→              Interested in working together? Let&apos;s create something extraordinary.
+   696→   696→              Drop me a message and let&apos;s bring your vision to life.
+   697→   697→            </p>
+   698→   698→
+   699→   699→            {/* Facebook - main CTA card */}
+   700→   700→            <motion.a
+   701→   701→              href="https://www.facebook.com/manwiseogc/"
+   702→   702→              target="_blank"
+   703→   703→              rel="noopener noreferrer"
+   704→   704→              className="contact-fb-card group relative block overflow-hidden rounded-xl border border-[#00ff8833] p-6 md:p-8 mb-6 transition-all duration-500 hover:border-[#00ff8866]"
+   705→   705→              whileHover={{ scale: 1.01 }}
+   706→   706→              initial={{ opacity: 0, y: 20 }}
+   707→   707→              animate={{ opacity: 1, y: 0 }}
+   708→   708→              transition={{ duration: 0.6, delay: 0.2 }}
+   709→   709→            >
+   710→   710→              {/* background glow */}
+   711→   711→              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+   712→   712→                style={{ background: 'radial-gradient(circle at 30% 50%, #00ff8808, transparent 60%), radial-gradient(circle at 70% 50%, #00aaff06, transparent 60%)' }}
+   713→   713→              />
+   714→   714→
+   715→   715→              {/* animated border line */}
+   716→   716→              <div className="absolute top-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-700"
+   717→   717→                style={{ background: 'linear-gradient(90deg, #00ff88, #00aaff, #aa44ff, #ff0066)' }}
+   718→   718→              />
+   719→   719→
+   720→   720→              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+   721→   721→                {/* FB icon with glitch effect */}
+   722→   722→                <div className="contact-fb-icon flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl border border-[#00ff8844] bg-[#0a0a0f] flex items-center justify-center group-hover:border-[#00ff88] transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+   723→   723→                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="transition-all duration-300 group-hover:scale-110">
+   724→   724→                    <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
+   725→   725→                  </svg>
+   726→   726→                </div>
+   727→   727→
+   728→   728→                <div className="flex-1 text-center md:text-left">
+   729→   729→                  <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+   730→   730→                    <h3 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color: '#00ff88' }}>
+   731→   731→                      /manwiseogc
+   732→   732→                    </h3>
+   733→   733→                    <span className="font-mono text-[10px] tracking-[0.3em] text-[#00ff8866] border border-[#00ff8822] px-2 py-0.5 rounded group-hover:text-[#00ff88] group-hover:border-[#00ff8844] transition-all duration-300">
+   734→   734→                      FACEBOOK
+   735→   735→                    </span>
+   736→   736→                  </div>
+   737→   737→                  <p className="text-white/30 text-sm font-mono">
+   738→   738→                    {'>'} hit me up on facebook_ // connect & collab
+   739→   739→                  </p>
+   740→   740→                  {/* terminal style path */}
+   741→   741→                  <div className="mt-2 font-mono text-[10px] text-white/15 tracking-wider">
+   742→   742→                    https://www.facebook.com/manwiseogc/
+   743→   743→                  </div>
+   744→   744→                </div>
+   745→   745→
+   746→   746→                {/* arrow indicator */}
+   747→   747→                <div className="flex-shrink-0 transition-all duration-500 group-hover:translate-x-2 group-hover:text-[#00ff88] text-white/20">
+   748→   748→                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   749→   749→                    <path d="M5 12h14M12 5l7 7-7 7" />
+   750→   750→                  </svg>
+   751→   751→                </div>
+   752→   752→              </div>
+   753→   753→
+   754→   754→              {/* scan line on hover */}
+   755→   755→              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+   756→   756→                <div className="contact-scanline" />
+   757→   757→              </div>
+   758→   758→            </motion.a>
+   759→   759→
+   760→   760→            {/* secondary buttons */}
+   761→   761→            <div className="flex flex-wrap gap-4">
+   762→   762→              <a
+   763→   763→                href="mailto:hello@b3k1c.exe"
+   764→   764→                className="inline-flex items-center gap-3 px-6 py-3 rounded border font-mono text-sm tracking-widest transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,136,0.2)]"
+   765→   765→                style={{ borderColor: '#00ff8866', color: '#00ff88' }}
+   766→   766→              >
+   767→   767→                <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+   768→   768→                EMAIL
+   769→   769→              </a>
+   770→   770→              <a
+   771→   771→                href="#"
+   772→   772→                className="inline-flex items-center gap-3 px-6 py-3 rounded border font-mono text-sm tracking-widest text-white/30 border-white/10 transition-all duration-300 hover:border-white/30 hover:text-white/60"
+   773→   773→              >
+   774→   774→                <span className="w-2 h-2 rounded-full bg-white/20" />
+   775→   775→                DOWNLOAD CV
+   776→   776→              </a>
+   777→   777→            </div>
+   778→   778→          </div>
+   779→   779→        </PortfolioSection>
+   780→   780→      </main>
+   781→   781→
+   782→   782→      <Footer />
+   783→   783→    </div>
+   784→   784→  )
+   785→   785→}
+   786→   786→
