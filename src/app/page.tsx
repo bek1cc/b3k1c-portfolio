@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, useInView, useScroll, useTransform } from 'framer-motion'
+import { motion, useInView, useScroll, useTransform, AnimatePresence } from 'framer-motion'
 
 /* ─── floating particles (deterministic positions for SSR) ─── */
 function Particles() {
@@ -97,17 +97,21 @@ function PortfolioSection({
   )
 }
 
-/* ─── portfolio card ─── */
+/* ─── portfolio card with optional image ─── */
 function PortfolioCard({
   title,
   subtitle,
   color,
   index,
+  image,
+  onClick,
 }: {
   title: string
   subtitle: string
   color: string
   index: number
+  image?: string
+  onClick?: () => void
 }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
@@ -119,29 +123,40 @@ function PortfolioCard({
       animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
       transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
       className="portfolio-item corner-decor rounded-lg group cursor-pointer"
+      onClick={onClick}
     >
-      {/* placeholder image area */}
+      {/* image area */}
       <div
         className="aspect-[4/3] relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${color}11, ${color}05)` }}
+        style={!image ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
       >
-        {/* grid overlay */}
-        <div className="absolute inset-0 cyber-grid opacity-40" />
-
-        {/* centered upload hint */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-          <div
-            className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-            style={{ borderColor: `${color}66` }}
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-          </div>
-          <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
-            Upload Content
-          </span>
-        </div>
+        {image ? (
+          <>
+            <img
+              src={image}
+              alt={title}
+              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+          </>
+        ) : (
+          <>
+            <div className="absolute inset-0 cyber-grid opacity-40" />
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <div
+                className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                style={{ borderColor: `${color}66` }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+                  <path d="M12 5v14M5 12h14" />
+                </svg>
+              </div>
+              <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
+                Upload Content
+              </span>
+            </div>
+          </>
+        )}
 
         {/* hover overlay */}
         <div
@@ -161,6 +176,207 @@ function PortfolioCard({
         <p className="text-xs md:text-sm text-white/40 pl-4">{subtitle}</p>
       </div>
     </motion.div>
+  )
+}
+
+/* ─── lightbox modal ─── */
+function Lightbox({
+  images,
+  titles,
+  initialIndex,
+  onClose,
+}: {
+  images: string[]
+  titles: string[]
+  initialIndex: number
+  onClose: () => void
+}) {
+  const [current, setCurrent] = useState(initialIndex)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, images.length - 1))
+      if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0))
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [images.length, onClose])
+
+  return (
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[9999] bg-[#0a0a0f]/95 backdrop-blur-xl flex items-center justify-center p-4"
+        onClick={onClose}
+      >
+        {/* close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all z-10"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* counter */}
+        <div className="absolute top-6 left-6 font-mono text-xs text-white/30 tracking-widest">
+          [{current + 1}/{images.length}]
+        </div>
+
+        {/* image */}
+        <motion.div
+          key={current}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="max-w-5xl w-full max-h-[80vh] relative"
+          onClick={e => e.stopPropagation()}
+        >
+          <img
+            src={images[current]}
+            alt={titles[current]}
+            className="w-full h-full object-contain rounded-lg"
+          />
+          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0f] to-transparent rounded-b-lg">
+            <p className="font-mono text-sm text-white/60">{titles[current]}</p>
+          </div>
+        </motion.div>
+
+        {/* nav buttons */}
+        {current > 0 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrent(c => c - 1) }}
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M15 18l-6-6 6-6" />
+            </svg>
+          </button>
+        )}
+        {current < images.length - 1 && (
+          <button
+            onClick={(e) => { e.stopPropagation(); setCurrent(c => c + 1) }}
+            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M9 18l6-6-6-6" />
+            </svg>
+          </button>
+        )}
+      </motion.div>
+    </AnimatePresence>
+  )
+}
+
+/* ─── project showcase (full-width featured project) ─── */
+function ProjectShowcase({
+  title,
+  description,
+  tags,
+  images,
+  imageTitles,
+  color,
+  liveUrl,
+}: {
+  title: string
+  description: string
+  tags: string[]
+  images: string[]
+  imageTitles: string[]
+  color: string
+  liveUrl?: string
+}) {
+  const ref = useRef(null)
+  const isInView = useInView(ref, { once: true, margin: '-50px' })
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  return (
+    <>
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, y: 60 }}
+        animate={isInView ? { opacity: 1, y: 0 } : {}}
+        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+        className="relative"
+      >
+        {/* project info bar */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color }}>
+              {title}
+            </h3>
+            <p className="text-white/40 text-sm mt-1">{description}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {tags.map(tag => (
+              <span
+                key={tag}
+                className="px-3 py-1 rounded-full text-xs font-mono tracking-wider border"
+                style={{ borderColor: `${color}44`, color: `${color}aa`, background: `${color}08` }}
+              >
+                {tag}
+              </span>
+            ))}
+            {liveUrl && (
+              <a
+                href={liveUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-4 py-1.5 rounded-full text-xs font-mono tracking-wider border transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,170,255,0.3)]"
+                style={{ borderColor: `${color}66`, color }}
+              >
+                LIVE →
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* image grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+          {images.map((img, i) => (
+            <motion.div
+              key={i}
+              initial={{ opacity: 0, y: 30 }}
+              animate={isInView ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.5, delay: i * 0.08 }}
+              className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5"
+              onClick={() => setLightboxIndex(i)}
+              style={i === 0 ? { gridColumn: 'span 2', gridRow: 'span 2' } : undefined}
+            >
+              <img
+                src={img}
+                alt={imageTitles[i]}
+                className="w-full h-full object-cover object-top transition-all duration-700 group-hover:scale-105 group-hover:brightness-110"
+                style={i === 0 ? { minHeight: '300px' } : { minHeight: '150px' }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <p className="font-mono text-xs" style={{ color }}>{imageTitles[i]}</p>
+              </div>
+              {/* glow border on hover */}
+              <div
+                className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ boxShadow: `inset 0 0 30px ${color}22, 0 0 20px ${color}11` }}
+              />
+            </motion.div>
+          ))}
+        </div>
+      </motion.div>
+
+      {/* lightbox */}
+      {lightboxIndex !== null && (
+        <Lightbox
+          images={images}
+          titles={imageTitles}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+    </>
   )
 }
 
@@ -381,13 +597,6 @@ export default function Home() {
     { title: 'Packaging', subtitle: 'Product Design' },
   ]
 
-  const webCards = [
-    { title: 'E-Commerce Platform', subtitle: 'Full-Stack Web App' },
-    { title: 'SaaS Dashboard', subtitle: 'React + TypeScript' },
-    { title: 'Portfolio Site', subtitle: 'Next.js + Framer' },
-    { title: 'Landing Page', subtitle: 'Conversion Optimized' },
-  ]
-
   const fotoCards = [
     { title: 'Street Photography', subtitle: 'Urban Exploration' },
     { title: 'Product Shoot', subtitle: 'Studio Setup' },
@@ -401,6 +610,26 @@ export default function Home() {
     { title: 'Game Concept', subtitle: 'Level Design' },
     { title: '3D Assets', subtitle: 'Blender & ZBrush' },
     { title: 'Game UI', subtitle: 'HUD & Menus' },
+  ]
+
+  /* Tomek Instalacije project data */
+  const tomekImages = [
+    '/portfolio/tomek-instalacije/section-1.png',
+    '/portfolio/tomek-instalacije/section-2.png',
+    '/portfolio/tomek-instalacije/section-3.png',
+    '/portfolio/tomek-instalacije/section-4.png',
+    '/portfolio/tomek-instalacije/section-5.png',
+    '/portfolio/tomek-instalacije/section-6.png',
+    '/portfolio/tomek-instalacije/section-7.png',
+  ]
+  const tomekTitles = [
+    'Hero Section',
+    'Landing Page',
+    'Stats & Services',
+    'Process Steps',
+    'Project Gallery',
+    'Services Detail',
+    'Contact Page',
   ]
 
   return (
@@ -426,11 +655,15 @@ export default function Home() {
         {/* SECTION 02 — WEB SITES */}
         <div id="websites" className="scroll-mt-24">
           <PortfolioSection number="02" title="WEB SITES" color="#00aaff">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
-              {webCards.map((card, i) => (
-                <PortfolioCard key={card.title} {...card} color="#00aaff" index={i} />
-              ))}
-            </div>
+            {/* Featured project: Tomek Instalacije */}
+            <ProjectShowcase
+              title="Tomek Instalacije"
+              description="Full website for plumbing & heating company — dark theme, responsive design, gallery, contact form"
+              tags={['Next.js', 'TypeScript', 'Tailwind', 'Responsive']}
+              images={tomekImages}
+              imageTitles={tomekTitles}
+              color="#00aaff"
+            />
           </PortfolioSection>
         </div>
 
