@@ -632,7 +632,6 @@ function Navbar() {
   const sections = [
     { label: 'DESIGNS', href: '#designs', color: '#00ff88' },
     { label: 'WEB SITES', href: '#websites', color: '#00aaff' },
-    { label: 'FOTO / VIDEO', href: '#foto', color: '#aa44ff' },
     { label: 'GAME DEV', href: '#games', color: '#ff0066' },
   ]
 
@@ -760,14 +759,6 @@ export default function Home() {
     { title: 'Packaging', subtitle: 'Product Design' },
   ]
 
-  const fotoCards = [
-    { title: 'Street Photography', subtitle: 'Urban Exploration' },
-    { title: 'Product Shoot', subtitle: 'Studio Setup' },
-    { title: 'Music Video', subtitle: 'Directing & Editing' },
-    { title: 'Short Film', subtitle: 'Cinematography' },
-    { title: 'Motion Graphics', subtitle: 'After Effects' },
-  ]
-
   const gameCards = [
     { title: 'Indie Game', subtitle: 'Unity / Unreal' },
     { title: 'Game Concept', subtitle: 'Level Design' },
@@ -806,20 +797,9 @@ export default function Home() {
           </PortfolioSection>
         </div>
 
-        {/* SECTION 03 — FOTO / VIDEO */}
-        <div id="foto" className="scroll-mt-24">
-          <PortfolioSection number="03" title="FOTO / VIDEO" color="#aa44ff">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-              {fotoCards.map((card, i) => (
-                <PortfolioCard key={card.title} {...card} color="#aa44ff" index={i} />
-              ))}
-            </div>
-          </PortfolioSection>
-        </div>
-
-        {/* SECTION 04 — GAME DEVELOPING */}
+        {/* SECTION 03 — GAME DEVELOPING */}
         <div id="games" className="scroll-mt-24">
-          <PortfolioSection number="04" title="GAME DEVELOPING" color="#ff0066">
+          <PortfolioSection number="03" title="GAME DEVELOPING" color="#ff0066">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
               {gameCards.map((card, i) => (
                 <PortfolioCard key={card.title} {...card} color="#ff0066" index={i} />
@@ -829,7 +809,7 @@ export default function Home() {
         </div>
 
         {/* ─── CONTACT / CTA ─── */}
-        <PortfolioSection number="05" title="CONTACT" color="#00ff88">
+        <PortfolioSection number="04" title="CONTACT" color="#00ff88">
           <div className="max-w-2xl">
             <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
               Interested in working together? Let&apos;s create something extraordinary.
