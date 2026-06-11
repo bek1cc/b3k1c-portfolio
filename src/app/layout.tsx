@@ -19,6 +19,11 @@ export const metadata: Metadata = {
   icons: {
     icon: "/b3k1c-logo.png",
   },
+  openGraph: {
+    title: "b3k1c.exe // Portfolio",
+    description: "Digital portfolio — Designs, Web Sites, Foto/Video, Game Developing",
+    images: [],
+  },
 };
 
 export default function RootLayout({
