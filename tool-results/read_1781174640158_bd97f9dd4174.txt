@@ -1,0 +1,947 @@
+     1→     1→'use client'
+     2→     2→
+     3→     3→import { useEffect, useRef, useState } from 'react'
+     4→     4→import { motion, useInView, useScroll, useTransform, AnimatePresence } from 'framer-motion'
+     5→     5→
+     6→     6→/* ─── floating particles (deterministic positions for SSR) ─── */
+     7→     7→function Particles() {
+     8→     8→  // Fewer particles on mobile for performance
+     9→     9→  const [count, setCount] = useState(30)
+    10→    10→
+    11→    11→  useEffect(() => {
+    12→    12→    setCount(window.innerWidth < 768 ? 12 : 30)
+    13→    13→  }, [])
+    14→    14→
+    15→    15→  const particles = Array.from({ length: count }, (_, i) => {
+    16→    16→    const seed = (i * 7 + 13) % 100
+    17→    17→    return {
+    18→    18→      id: i,
+    19→    19→      left: ((seed * 37 + 53) % 100),
+    20→    20→      delay: (seed * 0.13) % 10,
+    21→    21→      duration: 8 + (seed % 12),
+    22→    22→      size: 1 + (seed % 3),
+    23→    23→      color: ['#00ff88', '#00aaff', '#aa44ff', '#ff0066'][i % 4] as string,
+    24→    24→    }
+    25→    25→  })
+    26→    26→
+    27→    27→  return (
+    28→    28→    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+    29→    29→      {particles.map(p => (
+    30→    30→        <div
+    31→    31→          key={p.id}
+    32→    32→          className="particle"
+    33→    33→          style={{
+    34→    34→            left: `${p.left}%`,
+    35→    35→            width: p.size,
+    36→    36→            height: p.size,
+    37→    37→            background: p.color,
+    38→    38→            animationDelay: `${p.delay}s`,
+    39→    39→            animationDuration: `${p.duration}s`,
+    40→    40→            opacity: 0.4,
+    41→    41→          }}
+    42→    42→        />
+    43→    43→      ))}
+    44→    44→    </div>
+    45→    45→  )
+    46→    46→}
+    47→    47→
+    48→    48→/* ─── section component ─── */
+    49→    49→function PortfolioSection({
+    50→    50→  number,
+    51→    51→  title,
+    52→    52→  color,
+    53→    53→  children,
+    54→    54→}: {
+    55→    55→  number: string
+    56→    56→  title: string
+    57→    57→  color: string
+    58→    58→  children: React.ReactNode
+    59→    59→}) {
+    60→    60→  const ref = useRef(null)
+    61→    61→  const isInView = useInView(ref, { once: true, margin: '-100px' })
+    62→    62→
+    63→    63→  return (
+    64→    64→    <motion.section
+    65→    65→      ref={ref}
+    66→    66→      initial={{ opacity: 0, y: 80 }}
+    67→    67→      animate={isInView ? { opacity: 1, y: 0 } : {}}
+    68→    68→      transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
+    69→    69→      className="relative py-16 md:py-24"
+    70→    70→    >
+    71→    71→      {/* section header */}
+    72→    72→      <div className="flex items-center gap-3 md:gap-6 mb-8 md:mb-14">
+    73→    73→        <span className="section-number text-[10px] md:text-xs">[{number}]</span>
+    74→    74→        <div className="flex items-center gap-2 md:gap-3 min-w-0">
+    75→    75→          <motion.div
+    76→    76→            initial={{ width: 0 }}
+    77→    77→            animate={isInView ? { width: 24 } : {}}
+    78→    78→            transition={{ duration: 0.6, delay: 0.2 }}
+    79→    79→            className="h-[2px] flex-shrink-0"
+    80→    80→            style={{ background: color }}
+    81→    81→          />
+    82→    82→          <h2
+    83→    83→            className="text-2xl sm:text-3xl md:text-5xl font-bold tracking-tight whitespace-nowrap"
+    84→    84→            style={{
+    85→    85→              color,
+    86→    86→              textShadow: `0 0 20px ${color}44`,
+    87→    87→            }}
+    88→    88→          >
+    89→    89→            {title}
+    90→    90→          </h2>
+    91→    91→          <motion.div
+    92→    92→            initial={{ width: 0 }}
+    93→    93→            animate={isInView ? { width: '100%' } : {}}
+    94→    94→            transition={{ duration: 0.8, delay: 0.4 }}
+    95→    95→            className="h-[1px] max-w-[200px] min-w-[20px]"
+    96→    96→            style={{ background: `${color}44` }}
+    97→    97→          />
+    98→    98→        </div>
+    99→    99→      </div>
+   100→   100→
+   101→   101→      {/* content */}
+   102→   102→      {children}
+   103→   103→    </motion.section>
+   104→   104→  )
+   105→   105→}
+   106→   106→
+   107→   107→/* ─── media item type ─── */
+   108→   108→type MediaItem = {
+   109→   109→  type: 'video' | 'image'
+   110→   110→  src: string
+   111→   111→  title: string
+   112→   112→}
+   113→   113→
+   114→   114→/* ─── lightbox modal - supports video + images with arrow nav ─── */
+   115→   115→function Lightbox({
+   116→   116→  items,
+   117→   117→  initialIndex,
+   118→   118→  onClose,
+   119→   119→}: {
+   120→   120→  items: MediaItem[]
+   121→   121→  initialIndex: number
+   122→   122→  onClose: () => void
+   123→   123→}) {
+   124→   124→  const [current, setCurrent] = useState(initialIndex)
+   125→   125→
+   126→   126→  // Touch swipe support
+   127→   127→  const touchStartX = useRef(0)
+   128→   128→  const touchEndX = useRef(0)
+   129→   129→
+   130→   130→  const handleTouchStart = (e: React.TouchEvent) => {
+   131→   131→    touchStartX.current = e.touches[0].clientX
+   132→   132→  }
+   133→   133→
+   134→   134→  const handleTouchMove = (e: React.TouchEvent) => {
+   135→   135→    touchEndX.current = e.touches[0].clientX
+   136→   136→  }
+   137→   137→
+   138→   138→  const handleTouchEnd = () => {
+   139→   139→    const diff = touchStartX.current - touchEndX.current
+   140→   140→    if (Math.abs(diff) > 50) {
+   141→   141→      if (diff > 0) setCurrent(c => c < items.length - 1 ? c + 1 : 0)
+   142→   142→      else setCurrent(c => c > 0 ? c - 1 : items.length - 1)
+   143→   143→    }
+   144→   144→  }
+   145→   145→
+   146→   146→  useEffect(() => {
+   147→   147→    const handleKey = (e: KeyboardEvent) => {
+   148→   148→      if (e.key === 'Escape') onClose()
+   149→   149→      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, items.length - 1))
+   150→   150→      if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0))
+   151→   151→    }
+   152→   152→    window.addEventListener('keydown', handleKey)
+   153→   153→    return () => window.removeEventListener('keydown', handleKey)
+   154→   154→  }, [items.length, onClose])
+   155→   155→
+   156→   156→  const item = items[current]
+   157→   157→
+   158→   158→  return (
+   159→   159→    <AnimatePresence>
+   160→   160→      <motion.div
+   161→   161→        initial={{ opacity: 0 }}
+   162→   162→        animate={{ opacity: 1 }}
+   163→   163→        exit={{ opacity: 0 }}
+   164→   164→        className="fixed inset-0 z-[9999] bg-[#0a0a0f]/95 backdrop-blur-xl flex items-center justify-center p-2 sm:p-4"
+   165→   165→        onClick={onClose}
+   166→   166→        onTouchStart={handleTouchStart}
+   167→   167→        onTouchMove={handleTouchMove}
+   168→   168→        onTouchEnd={handleTouchEnd}
+   169→   169→      >
+   170→   170→        {/* close button */}
+   171→   171→        <button
+   172→   172→          onClick={onClose}
+   173→   173→          className="absolute top-3 right-3 sm:top-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-all z-10 bg-[#0a0a0f]/50 sm:bg-transparent"
+   174→   174→        >
+   175→   175→          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   176→   176→            <path d="M18 6L6 18M6 6l12 12" />
+   177→   177→          </svg>
+   178→   178→        </button>
+   179→   179→
+   180→   180→        {/* counter + media type badge */}
+   181→   181→        <div className="absolute top-3 left-3 sm:top-6 sm:left-6 flex items-center gap-2 sm:gap-3">
+   182→   182→          <span className="font-mono text-[10px] sm:text-xs text-white/30 tracking-widest">
+   183→   183→            [{current + 1}/{items.length}]
+   184→   184→          </span>
+   185→   185→          {item.type === 'video' && (
+   186→   186→            <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-red-400/70 border border-red-500/20 px-2 py-0.5 rounded">
+   187→   187→              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+   188→   188→              VIDEO
+   189→   189→            </span>
+   190→   190→          )}
+   191→   191→        </div>
+   192→   192→
+   193→   193→        {/* media content */}
+   194→   194→        <motion.div
+   195→   195→          key={current}
+   196→   196→          initial={{ opacity: 0, scale: 0.9 }}
+   197→   197→          animate={{ opacity: 1, scale: 1 }}
+   198→   198→          transition={{ duration: 0.3 }}
+   199→   199→          className="max-w-5xl w-full max-h-[75vh] sm:max-h-[80vh] relative"
+   200→   200→          onClick={e => e.stopPropagation()}
+   201→   201→        >
+   202→   202→          {item.type === 'video' ? (
+   203→   203→            <video
+   204→   204→              src={item.src}
+   205→   205→              className="w-full max-h-[80vh] object-contain rounded-lg"
+   206→   206→              autoPlay
+   207→   207→              loop
+   208→   208→              muted
+   209→   209→              playsInline
+   210→   210→              controls
+   211→   211→            />
+   212→   212→          ) : (
+   213→   213→            <img
+   214→   214→              src={item.src}
+   215→   215→              alt={item.title}
+   216→   216→              className="w-full max-h-[80vh] object-contain rounded-lg"
+   217→   217→            />
+   218→   218→          )}
+   219→   219→          <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0f] to-transparent rounded-b-lg">
+   220→   220→            <p className="font-mono text-sm text-white/60">{item.title}</p>
+   221→   221→          </div>
+   222→   222→        </motion.div>
+   223→   223→
+   224→   224→        {/* nav buttons - always show if multiple items */}
+   225→   225→        {items.length > 1 && (
+   226→   226→          <>
+   227→   227→            <button
+   228→   228→              onClick={(e) => { e.stopPropagation(); setCurrent(c => c > 0 ? c - 1 : items.length - 1) }}
+   229→   229→              className="absolute left-1 sm:left-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all bg-[#0a0a0f]/50 sm:bg-transparent"
+   230→   230→            >
+   231→   231→              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   232→   232→                <path d="M15 18l-6-6 6-6" />
+   233→   233→              </svg>
+   234→   234→            </button>
+   235→   235→            <button
+   236→   236→              onClick={(e) => { e.stopPropagation(); setCurrent(c => c < items.length - 1 ? c + 1 : 0) }}
+   237→   237→              className="absolute right-1 sm:right-4 top-1/2 -translate-y-1/2 w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all bg-[#0a0a0f]/50 sm:bg-transparent"
+   238→   238→            >
+   239→   239→              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   240→   240→                <path d="M9 18l6-6-6-6" />
+   241→   241→              </svg>
+   242→   242→            </button>
+   243→   243→          </>
+   244→   244→        )}
+   245→   245→
+   246→   246→        {/* thumbnail strip at bottom */}
+   247→   247→        {items.length > 1 && (
+   248→   248→          <div className="absolute bottom-2 sm:bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-1.5 sm:gap-2 p-1.5 sm:p-2 rounded-xl bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/5 max-w-[90vw] overflow-x-auto" onClick={e => e.stopPropagation()}>
+   249→   249→            {items.map((m, i) => (
+   250→   250→              <button
+   251→   251→                key={i}
+   252→   252→                onClick={(e) => { e.stopPropagation(); setCurrent(i) }}
+   253→   253→                className={`w-8 h-5 sm:w-10 sm:h-7 rounded overflow-hidden border-2 flex-shrink-0 transition-all duration-200 ${
+   254→   254→                  i === current ? 'border-[#00aaff] opacity-100 scale-110' : 'border-transparent opacity-40 hover:opacity-70'
+   255→   255→                }`}
+   256→   256→              >
+   257→   257→                {m.type === 'video' ? (
+   258→   258→                  <div className="w-full h-full bg-[#1a1a2e] flex items-center justify-center">
+   259→   259→                    <svg width="8" height="8" viewBox="0 0 24 24" fill="#00aaff" stroke="none">
+   260→   260→                      <polygon points="5 3 19 12 5 21 5 3" />
+   261→   261→                    </svg>
+   262→   262→                  </div>
+   263→   263→                ) : (
+   264→   264→                  <img src={m.src} alt="" className="w-full h-full object-cover" />
+   265→   265→                )}
+   266→   266→              </button>
+   267→   267→            ))}
+   268→   268→          </div>
+   269→   269→        )}
+   270→   270→      </motion.div>
+   271→   271→    </AnimatePresence>
+   272→   272→  )
+   273→   273→}
+   274→   274→
+   275→   275→/* ─── portfolio card - can show image, video, or placeholder ─── */
+   276→   276→function PortfolioCard({
+   277→   277→  title,
+   278→   278→  subtitle,
+   279→   279→  color,
+   280→   280→  index,
+   281→   281→  image,
+   282→   282→  videoSrc,
+   283→   283→  galleryImages,
+   284→   284→  galleryTitles,
+   285→   285→  onClick,
+   286→   286→}: {
+   287→   287→  title: string
+   288→   288→  subtitle: string
+   289→   289→  color: string
+   290→   290→  index: number
+   291→   291→  image?: string
+   292→   292→  videoSrc?: string
+   293→   293→  galleryImages?: string[]
+   294→   294→  galleryTitles?: string[]
+   295→   295→  onClick?: () => void
+   296→   296→}) {
+   297→   297→  const ref = useRef(null)
+   298→   298→  const isInView = useInView(ref, { once: true, margin: '-50px' })
+   299→   299→  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+   300→   300→
+   301→   301→  const hasMedia = image || videoSrc
+   302→   302→  const hasGallery = galleryImages && galleryImages.length > 0
+   303→   303→
+   304→   304→  // Build media items list for lightbox (video first, then images)
+   305→   305→  const mediaItems: MediaItem[] = [
+   306→   306→    ...(videoSrc ? [{ type: 'video' as const, src: videoSrc, title: title }] : []),
+   307→   307→    ...(image ? [{ type: 'image' as const, src: image, title: title }] : []),
+   308→   308→    ...(galleryImages || []).map((src, i) => ({
+   309→   309→      type: 'image' as const,
+   310→   310→      src,
+   311→   311→      title: galleryTitles?.[i] || `Image ${i + 1}`,
+   312→   312→    })),
+   313→   313→  ]
+   314→   314→
+   315→   315→  const handleClick = () => {
+   316→   316→    if (mediaItems.length > 0) {
+   317→   317→      setLightboxIndex(0)
+   318→   318→    } else if (onClick) {
+   319→   319→      onClick()
+   320→   320→    }
+   321→   321→  }
+   322→   322→
+   323→   323→  return (
+   324→   324→    <>
+   325→   325→      <motion.div
+   326→   326→        ref={ref}
+   327→   327→        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+   328→   328→        animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+   329→   329→        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
+   330→   330→        className="portfolio-item corner-decor rounded-lg group cursor-pointer"
+   331→   331→        onClick={handleClick}
+   332→   332→      >
+   333→   333→        {/* media area */}
+   334→   334→        <div
+   335→   335→          className="aspect-[4/3] sm:aspect-[4/3] relative overflow-hidden"
+   336→   336→          style={!hasMedia ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
+   337→   337→        >
+   338→   338→          {videoSrc ? (
+   339→   339→            <>
+   340→   340→              <video
+   341→   341→                src={videoSrc}
+   342→   342→                className="w-full h-full object-cover object-top"
+   343→   343→                autoPlay
+   344→   344→                loop
+   345→   345→                muted
+   346→   346→                playsInline
+   347→   347→              />
+   348→   348→              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-50" />
+   349→   349→              {/* video indicator */}
+   350→   350→              <div className="absolute top-2 left-2 sm:top-3 sm:left-3 flex items-center gap-1 sm:gap-1.5 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+   351→   351→                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+   352→   352→                <span className="text-[8px] sm:text-[9px] font-mono text-white/50 tracking-widest">REC</span>
+   353→   353→              </div>
+   354→   354→              {/* gallery count badge */}
+   355→   355→              {hasGallery && (
+   356→   356→                <div className="absolute top-2 right-2 sm:top-3 sm:right-3 flex items-center gap-1 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+   357→   357→                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   358→   358→                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+   359→   359→                    <circle cx="8.5" cy="8.5" r="1.5" />
+   360→   360→                    <polyline points="21 15 16 10 5 21" />
+   361→   361→                  </svg>
+   362→   362→                  <span className="text-[8px] sm:text-[9px] font-mono tracking-wider" style={{ color }}>{galleryImages!.length + 1}</span>
+   363→   363→                </div>
+   364→   364→              )}
+   365→   365→              {/* POGLEDAJ VIŠE overlay */}
+   366→   366→              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity duration-300 pointer-events-none">
+   367→   367→                <div className="px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/10 flex items-center gap-1.5 sm:gap-2">
+   368→   368→                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   369→   369→                    <polyline points="15 3 21 3 21 9" />
+   370→   370→                    <polyline points="9 21 3 21 3 15" />
+   371→   371→                    <line x1="21" y1="3" x2="14" y2="10" />
+   372→   372→                    <line x1="3" y1="21" x2="10" y2="14" />
+   373→   373→                  </svg>
+   374→   374→                  <span className="text-[9px] sm:text-[10px] font-mono tracking-[0.1em] sm:tracking-[0.15em]" style={{ color }}>POGLEDAJ VIŠE</span>
+   375→   375→                </div>
+   376→   376→              </div>
+   377→   377→            </>
+   378→   378→          ) : image ? (
+   379→   379→            <>
+   380→   380→              <img
+   381→   381→                src={image}
+   382→   382→                alt={title}
+   383→   383→                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+   384→   384→              />
+   385→   385→              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+   386→   386→            </>
+   387→   387→          ) : (
+   388→   388→            <>
+   389→   389→              <div className="absolute inset-0 cyber-grid opacity-40" />
+   390→   390→              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+   391→   391→                <div
+   392→   392→                  className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+   393→   393→                  style={{ borderColor: `${color}66` }}
+   394→   394→                >
+   395→   395→                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+   396→   396→                    <path d="M12 5v14M5 12h14" />
+   397→   397→                  </svg>
+   398→   398→                </div>
+   399→   399→                <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
+   400→   400→                  Upload Content
+   401→   401→                </span>
+   402→   402→              </div>
+   403→   403→            </>
+   404→   404→          )}
+   405→   405→
+   406→   406→          {/* hover glow */}
+   407→   407→          <div
+   408→   408→            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+   409→   409→            style={{
+   410→   410→              background: `linear-gradient(180deg, transparent 40%, ${color}15 100%)`,
+   411→   411→            }}
+   412→   412→          />
+   413→   413→        </div>
+   414→   414→
+   415→   415→        {/* card info */}
+   416→   416→        <div className="p-3 sm:p-4 md:p-5">
+   417→   417→          <div className="flex items-center justify-between gap-2">
+   418→   418→            <div className="flex items-center gap-2 min-w-0">
+   419→   419→              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full flex-shrink-0" style={{ background: color }} />
+   420→   420→              <h3 className="font-semibold text-xs sm:text-sm md:text-base tracking-wide truncate">{title}</h3>
+   421→   421→            </div>
+   422→   422→            {hasGallery && (
+   423→   423→              <span className="text-[9px] sm:text-[10px] font-mono tracking-wider flex-shrink-0" style={{ color: `${color}88` }}>
+   424→   424→                +{mediaItems.length}
+   425→   425→              </span>
+   426→   426→            )}
+   427→   427→          </div>
+   428→   428→          <p className="text-[10px] sm:text-xs md:text-sm text-white/40 pl-3.5 sm:pl-4 mt-0.5 truncate">{subtitle}</p>
+   429→   429→        </div>
+   430→   430→      </motion.div>
+   431→   431→
+   432→   432→      {/* lightbox */}
+   433→   433→      {lightboxIndex !== null && mediaItems.length > 0 && (
+   434→   434→        <Lightbox
+   435→   435→          items={mediaItems}
+   436→   436→          initialIndex={lightboxIndex}
+   437→   437→          onClose={() => setLightboxIndex(null)}
+   438→   438→        />
+   439→   439→      )}
+   440→   440→    </>
+   441→   441→  )
+   442→   442→}
+   443→   443→
+   444→   444→/* ─── b3k1c LOGO (AI generated image) ─── */
+   445→   445→function B3k1cLogo() {
+   446→   446→  return (
+   447→   447→    <div className="logo-img-wrapper">
+   448→   448→      <img
+   449→   449→        src="/b3k1c-logo.png"
+   450→   450→        alt="b3k1c logo"
+   451→   451→        className="w-full h-full object-contain logo-hologram"
+   452→   452→      />
+   453→   453→    </div>
+   454→   454→  )
+   455→   455→}
+   456→   456→
+   457→   457→/* ─── hero section ─── */
+   458→   458→function Hero() {
+   459→   459→  const [displayText, setDisplayText] = useState('')
+   460→   460→  const fullText = '> initializing b3k1c.exe...'
+   461→   461→  const [showSubtext, setShowSubtext] = useState(false)
+   462→   462→
+   463→   463→  useEffect(() => {
+   464→   464→    let i = 0
+   465→   465→    const interval = setInterval(() => {
+   466→   466→      if (i <= fullText.length) {
+   467→   467→        setDisplayText(fullText.slice(0, i))
+   468→   468→        i++
+   469→   469→      } else {
+   470→   470→        clearInterval(interval)
+   471→   471→        setTimeout(() => setShowSubtext(true), 300)
+   472→   472→      }
+   473→   473→    }, 60)
+   474→   474→    return () => clearInterval(interval)
+   475→   475→  }, [])
+   476→   476→
+   477→   477→  const { scrollYProgress } = useScroll()
+   478→   478→  const logoY = useTransform(scrollYProgress, [0, 0.3], [0, -100])
+   479→   479→  const logoOpacity = useTransform(scrollYProgress, [0, 0.2], [1, 0])
+   480→   480→  const logoScale = useTransform(scrollYProgress, [0, 0.2], [1, 0.8])
+   481→   481→
+   482→   482→  return (
+   483→   483→    <section className="relative min-h-[100svh] flex flex-col items-center justify-center overflow-hidden px-4">
+   484→   484→      {/* radial glow */}
+   485→   485→      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] sm:w-[800px] sm:h-[800px] rounded-full opacity-20"
+   486→   486→        style={{ background: 'radial-gradient(circle, #00ff8815 0%, transparent 70%)' }}
+   487→   487→      />
+   488→   488→
+   489→   489→      {/* logo */}
+   490→   490→      <motion.div
+   491→   491→        style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
+   492→   492→        className="relative z-10 mb-6 sm:mb-8"
+   493→   493→      >
+   494→   494→        <div className="relative logo-ring p-2 sm:p-3">
+   495→   495→          <B3k1cLogo />
+   496→   496→        </div>
+   497→   497→      </motion.div>
+   498→   498→
+   499→   499→      {/* main title */}
+   500→   500→      <motion.div
+   501→   501→        initial={{ opacity: 0, y: 30 }}
+   502→   502→        animate={{ opacity: 1, y: 0 }}
+   503→   503→        transition={{ duration: 0.8, delay: 0.5 }}
+   504→   504→        className="relative z-10 text-center"
+   505→   505→      >
+   506→   506→        <h1
+   507→   507→          className="glitch-text text-4xl sm:text-7xl md:text-8xl lg:text-9xl font-black tracking-tighter"
+   508→   508→          data-text="b3k1c.exe"
+   509→   509→          style={{
+   510→   510→            fontFamily: 'var(--font-geist-mono)',
+   511→   511→            background: 'linear-gradient(135deg, #00ff88, #00aaff)',
+   512→   512→            WebkitBackgroundClip: 'text',
+   513→   513→            WebkitTextFillColor: 'transparent',
+   514→   514→          }}
+   515→   515→        >
+   516→   516→          b3k1c.exe
+   517→   517→        </h1>
+   518→   518→
+   519→   519→        {/* typing subtitle */}
+   520→   520→        <div className="mt-4 sm:mt-6 h-7 sm:h-8 flex items-center justify-center">
+   521→   521→          <span
+   522→   522→            className="font-mono text-xs sm:text-sm md:text-base tracking-widest"
+   523→   523→            style={{ color: '#00ff8888' }}
+   524→   524→          >
+   525→   525→            {displayText}
+   526→   526→          </span>
+   527→   527→          {displayText.length <= fullText.length && (
+   528→   528→            <span className="cursor-blink ml-0.5" />
+   529→   529→          )}
+   530→   530→        </div>
+   531→   531→
+   532→   532→        {/* secondary subtitle */}
+   533→   533→        <motion.p
+   534→   534→          initial={{ opacity: 0 }}
+   535→   535→          animate={showSubtext ? { opacity: 1 } : {}}
+   536→   536→          transition={{ duration: 0.6 }}
+   537→   537→          className="mt-3 sm:mt-4 text-white/30 text-[10px] sm:text-xs md:text-sm tracking-[0.15em] sm:tracking-[0.3em] uppercase font-mono"
+   538→   538→        >
+   539→   539→          {'// digital creative portfolio'}
+   540→   540→        </motion.p>
+   541→   541→      </motion.div>
+   542→   542→
+   543→   543→      {/* scroll indicator */}
+   544→   544→      <motion.div
+   545→   545→        initial={{ opacity: 0 }}
+   546→   546→        animate={{ opacity: 1 }}
+   547→   547→        transition={{ delay: 3, duration: 1 }}
+   548→   548→        className="absolute bottom-6 sm:bottom-10 z-10 flex flex-col items-center gap-2"
+   549→   549→      >
+   550→   550→        <span className="text-[8px] sm:text-[10px] tracking-[0.3em] sm:tracking-[0.4em] text-white/20 uppercase font-mono">scroll</span>
+   551→   551→        <motion.div
+   552→   552→          animate={{ y: [0, 8, 0] }}
+   553→   553→          transition={{ duration: 1.5, repeat: Infinity }}
+   554→   554→          className="w-[1px] h-6 sm:h-8"
+   555→   555→          style={{ background: 'linear-gradient(180deg, #00ff8866, transparent)' }}
+   556→   556→        />
+   557→   557→      </motion.div>
+   558→   558→    </section>
+   559→   559→  )
+   560→   560→}
+   561→   561→
+   562→   562→/* ─── nav bar ─── */
+   563→   563→function Navbar() {
+   564→   564→  const [scrolled, setScrolled] = useState(false)
+   565→   565→  const [mobileOpen, setMobileOpen] = useState(false)
+   566→   566→
+   567→   567→  useEffect(() => {
+   568→   568→    const handler = () => setScrolled(window.scrollY > 100)
+   569→   569→    window.addEventListener('scroll', handler)
+   570→   570→    return () => window.removeEventListener('scroll', handler)
+   571→   571→  }, [])
+   572→   572→
+   573→   573→  const sections = [
+   574→   574→    { label: 'DESIGNS', href: '#designs', color: '#00ff88' },
+   575→   575→    { label: 'WEB SITES', href: '#websites', color: '#00aaff' },
+   576→   576→    { label: 'GAME DEV', href: '#games', color: '#ff0066' },
+   577→   577→  ]
+   578→   578→
+   579→   579→  return (
+   580→   580→    <motion.nav
+   581→   581→      initial={{ y: -80 }}
+   582→   582→      animate={{ y: 0 }}
+   583→   583→      transition={{ duration: 0.6, delay: 2.5 }}
+   584→   584→      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+   585→   585→        scrolled
+   586→   586→          ? 'bg-[#0a0a0f]/90 backdrop-blur-xl border-b border-[#00ff8815]'
+   587→   587→          : 'bg-transparent'
+   588→   588→      }`}
+   589→   589→    >
+   590→   590→      <div className="max-w-7xl mx-auto px-4 md:px-8 h-14 sm:h-16 flex items-center justify-between">
+   591→   591→        <a href="#" className="font-mono text-xs sm:text-sm tracking-widest" style={{ color: '#00ff88' }}>
+   592→   592→          b3k1c.exe
+   593→   593→        </a>
+   594→   594→        <div className="hidden md:flex items-center gap-8">
+   595→   595→          {sections.map(s => (
+   596→   596→            <a
+   597→   597→              key={s.href}
+   598→   598→              href={s.href}
+   599→   599→              className="font-mono text-xs tracking-[0.2em] text-white/40 hover:text-white transition-colors duration-300 relative group"
+   600→   600→            >
+   601→   601→              {s.label}
+   602→   602→              <span
+   603→   603→                className="absolute -bottom-1 left-0 w-0 h-[1px] group-hover:w-full transition-all duration-300"
+   604→   604→                style={{ background: s.color }}
+   605→   605→              />
+   606→   606→            </a>
+   607→   607→          ))}
+   608→   608→        </div>
+   609→   609→        {/* mobile hamburger */}
+   610→   610→        <button
+   611→   611→          className="md:hidden w-8 h-8 flex flex-col items-center justify-center gap-1.5"
+   612→   612→          onClick={() => setMobileOpen(!mobileOpen)}
+   613→   613→        >
+   614→   614→          <span className={`block w-5 h-[1.5px] bg-[#00ff88] transition-all duration-300 ${mobileOpen ? 'rotate-45 translate-y-[4.5px]' : ''}`} />
+   615→   615→          <span className={`block w-5 h-[1.5px] bg-[#00ff88] transition-all duration-300 ${mobileOpen ? 'opacity-0' : ''}`} />
+   616→   616→          <span className={`block w-5 h-[1.5px] bg-[#00ff88] transition-all duration-300 ${mobileOpen ? '-rotate-45 -translate-y-[4.5px]' : ''}`} />
+   617→   617→        </button>
+   618→   618→      </div>
+   619→   619→
+   620→   620→      {/* mobile dropdown */}
+   621→   621→      <AnimatePresence>
+   622→   622→        {mobileOpen && (
+   623→   623→          <motion.div
+   624→   624→            initial={{ opacity: 0, height: 0 }}
+   625→   625→            animate={{ opacity: 1, height: 'auto' }}
+   626→   626→            exit={{ opacity: 0, height: 0 }}
+   627→   627→            transition={{ duration: 0.3 }}
+   628→   628→            className="md:hidden bg-[#0a0a0f]/95 backdrop-blur-xl border-b border-[#00ff8815] overflow-hidden"
+   629→   629→          >
+   630→   630→            <div className="px-4 py-3 flex flex-col gap-3">
+   631→   631→              {sections.map(s => (
+   632→   632→                <a
+   633→   633→                  key={s.href}
+   634→   634→                  href={s.href}
+   635→   635→                  onClick={() => setMobileOpen(false)}
+   636→   636→                  className="font-mono text-sm tracking-[0.2em] text-white/50 hover:text-white transition-colors duration-300 flex items-center gap-3"
+   637→   637→                >
+   638→   638→                  <span className="w-2 h-2 rounded-full" style={{ background: s.color }} />
+   639→   639→                  {s.label}
+   640→   640→                </a>
+   641→   641→              ))}
+   642→   642→            </div>
+   643→   643→          </motion.div>
+   644→   644→        )}
+   645→   645→      </AnimatePresence>
+   646→   646→    </motion.nav>
+   647→   647→  )
+   648→   648→}
+   649→   649→
+   650→   650→/* ─── footer ─── */
+   651→   651→function Footer() {
+   652→   652→  return (
+   653→   653→    <footer className="relative py-8 sm:py-12 border-t border-[#00ff8815]">
+   654→   654→      <div className="max-w-7xl mx-auto px-4 md:px-8">
+   655→   655→        <div className="flex flex-col items-center gap-4 sm:gap-6 md:flex-row md:justify-between">
+   656→   656→          <div className="font-mono text-xs sm:text-sm text-white/20 text-center md:text-left">
+   657→   657→            <span style={{ color: '#00ff8866' }}>b3k1c.exe</span>{' // all rights reserved'}
+   658→   658→          </div>
+   659→   659→          <div className="flex items-center gap-4 sm:gap-6">
+   660→   660→            {['Instagram', 'Behance', 'GitHub', 'Dribbble'].map(social => (
+   661→   661→              <a
+   662→   662→                key={social}
+   663→   663→                href="#"
+   664→   664→                className="font-mono text-[10px] sm:text-xs tracking-widest text-white/20 hover:text-[#00ff88] transition-colors duration-300"
+   665→   665→              >
+   666→   666→                {social}
+   667→   667→              </a>
+   668→   668→            ))}
+   669→   669→          </div>
+   670→   670→          <div className="font-mono text-[10px] sm:text-xs text-white/10">
+   671→   671→            v1.0.0 // built with passion
+   672→   672→          </div>
+   673→   673→        </div>
+   674→   674→      </div>
+   675→   675→    </footer>
+   676→   676→  )
+   677→   677→}
+   678→   678→
+   679→   679→/* ═══════════════════════════════════════
+   680→   680→   MAIN PAGE
+   681→   681→   ═══════════════════════════════════════ */
+   682→   682→export default function Home() {
+   683→   683→  const containerRef = useRef(null)
+   684→   684→
+   685→   685→  /* Tomek Instalacije project data */
+   686→   686→  const tomekImages = [
+   687→   687→    '/portfolio/tomek-instalacije/section-1.png',
+   688→   688→    '/portfolio/tomek-instalacije/section-2.png',
+   689→   689→    '/portfolio/tomek-instalacije/section-3.png',
+   690→   690→    '/portfolio/tomek-instalacije/section-4.png',
+   691→   691→    '/portfolio/tomek-instalacije/section-5.png',
+   692→   692→    '/portfolio/tomek-instalacije/section-6.png',
+   693→   693→    '/portfolio/tomek-instalacije/section-7.png',
+   694→   694→  ]
+   695→   695→  const tomekTitles = [
+   696→   696→    'Hero Section',
+   697→   697→    'Landing Page',
+   698→   698→    'Stats & Services',
+   699→   699→    'Process Steps',
+   700→   700→    'Project Gallery',
+   701→   701→    'Services Detail',
+   702→   702→    'Contact Page',
+   703→   703→  ]
+   704→   704→
+   705→   705→  /* Flambe Restoran project data */
+   706→   706→  const flambeImages = [
+   707→   707→    '/portfolio/flambe-restoran/section-1.png',
+   708→   708→    '/portfolio/flambe-restoran/section-2.png',
+   709→   709→    '/portfolio/flambe-restoran/section-3.png',
+   710→   710→  ]
+   711→   711→  const flambeTitles = [
+   712→   712→    'Homepage',
+   713→   713→    'Menu & Content',
+   714→   714→    'Gallery & Contact',
+   715→   715→  ]
+   716→   716→
+   717→   717→  /* WEB SITES section cards */
+   718→   718→  const websiteCards = [
+   719→   719→    {
+   720→   720→      title: 'Tomek Instalacije',
+   721→   721→      subtitle: 'Plumbing & heating company website',
+   722→   722→      videoSrc: '/portfolio/tomek-instalacije/tomekinstalacije.mp4',
+   723→   723→      galleryImages: tomekImages,
+   724→   724→      galleryTitles: tomekTitles,
+   725→   725→    },
+   726→   726→    {
+   727→   727→      title: 'Flambe Restoran',
+   728→   728→      subtitle: 'Restaurant website',
+   729→   729→      videoSrc: '/portfolio/flambe-restoran/restoran.mp4',
+   730→   730→      galleryImages: flambeImages,
+   731→   731→      galleryTitles: flambeTitles,
+   732→   732→    },
+   733→   733→    {
+   734→   734→      title: 'Keramika LUX',
+   735→   735→      subtitle: 'Ceramics & tiles website',
+   736→   736→      videoSrc: '/portfolio/keramika-lux/keramika.mp4',
+   737→   737→      galleryImages: [
+   738→   738→        '/portfolio/keramika-lux/section-1.png',
+   739→   739→        '/portfolio/keramika-lux/section-2.png',
+   740→   740→        '/portfolio/keramika-lux/section-3.png',
+   741→   741→        '/portfolio/keramika-lux/section-4.png',
+   742→   742→      ],
+   743→   743→      galleryTitles: [
+   744→   744→        'Homepage',
+   745→   745→        'Products & Catalog',
+   746→   746→        'Gallery & Details',
+   747→   747→        'Contact Page',
+   748→   748→      ],
+   749→   749→    },
+   750→   750→    {
+   751→   751→      title: 'Filmoplanet',
+   752→   752→      subtitle: 'Movie platform website',
+   753→   753→      image: '/portfolio/filmoplanet/section-1.png',
+   754→   754→      galleryImages: [
+   755→   755→        '/portfolio/filmoplanet/section-2.png',
+   756→   756→        '/portfolio/filmoplanet/section-3.png',
+   757→   757→      ],
+   758→   758→      galleryTitles: [
+   759→   759→        'Movie Listings',
+   760→   760→        'Details & Booking',
+   761→   761→      ],
+   762→   762→    },
+   763→   763→    { title: 'Web Project 5', subtitle: 'Coming Soon' },
+   764→   764→  ]
+   765→   765→
+   766→   766→  /* DESIGNS section cards */
+   767→   767→  const designCards = [
+   768→   768→    {
+   769→   769→      title: 'Unicate OGC Logo',
+   770→   770→      subtitle: 'Logo Design',
+   771→   771→      image: '/portfolio/unicate-ogc/logo.jpg',
+   772→   772→    },
+   773→   773→    {
+   774→   774→      title: 'ENB Host- Visual Design',
+   775→   775→      subtitle: 'Visual Identity',
+   776→   776→      videoSrc: '/portfolio/enb-host/enb.mp4',
+   777→   777→    },
+   778→   778→    { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
+   779→   779→    { title: 'UI/UX Concept', subtitle: 'Mobile & Web' },
+   780→   780→    { title: 'Illustration', subtitle: 'Digital Art & Vector' },
+   781→   781→    { title: 'Typography', subtitle: 'Custom Type Design' },
+   782→   782→    { title: 'Packaging', subtitle: 'Product Design' },
+   783→   783→  ]
+   784→   784→
+   785→   785→  /* GAME DEV section cards */
+   786→   786→  const gameCards = [
+   787→   787→    {
+   788→   788→      title: 'SA:MP Phone System',
+   789→   789→      subtitle: 'v0.1',
+   790→   790→      videoSrc: '/portfolio/samp-phone/sampphone.mp4',
+   791→   791→    },
+   792→   792→    {
+   793→   793→      title: 'SA:MP Case System',
+   794→   794→      subtitle: 'Game Feature',
+   795→   795→      image: '/portfolio/samp-case/klasikcase.png',
+   796→   796→    },
+   797→   797→    {
+   798→   798→      title: 'SA:MP Handling Car System',
+   799→   799→      subtitle: 'Game Feature',
+   800→   800→      image: '/portfolio/samp-handling/handling.jpg',
+   801→   801→    },
+   802→   802→    {
+   803→   803→      title: 'SA:MP Kliziste System',
+   804→   804→      subtitle: 'v0.1',
+   805→   805→      videoSrc: '/portfolio/samp-kliziste/kliziste.mp4',
+   806→   806→    },
+   807→   807→    { title: 'Game Project 3', subtitle: 'Coming Soon' },
+   808→   808→  ]
+   809→   809→
+   810→   810→  return (
+   811→   811→    <div ref={containerRef} className="scanlines noise-bg relative bg-[#0a0a0f] min-h-screen">
+   812→   812→      <Particles />
+   813→   813→      <Navbar />
+   814→   814→      <Hero />
+   815→   815→
+   816→   816→      {/* ─── MAIN CONTENT ─── */}
+   817→   817→      <main className="relative z-10 max-w-7xl mx-auto px-4 md:px-8">
+   818→   818→
+   819→   819→        {/* SECTION 01 — DESIGNS */}
+   820→   820→        <div id="designs" className="scroll-mt-24">
+   821→   821→          <PortfolioSection number="01" title="DESIGNS" color="#00ff88">
+   822→   822→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   823→   823→              {designCards.map((card, i) => (
+   824→   824→                <PortfolioCard key={card.title} {...card} color="#00ff88" index={i} />
+   825→   825→              ))}
+   826→   826→            </div>
+   827→   827→          </PortfolioSection>
+   828→   828→        </div>
+   829→   829→
+   830→   830→        {/* SECTION 02 — WEB SITES */}
+   831→   831→        <div id="websites" className="scroll-mt-24">
+   832→   832→          <PortfolioSection number="02" title="WEB SITES" color="#00aaff">
+   833→   833→            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+   834→   834→              {websiteCards.map((card, i) => (
+   835→   835→                <PortfolioCard key={card.title} {...card} color="#00aaff" index={i} />
+   836→   836→              ))}
+   837→   837→            </div>
+   838→   838→          </PortfolioSection>
+   839→   839→        </div>
+   840→   840→
+   841→   841→        {/* SECTION 03 — GAME DEVELOPING */}
+   842→   842→        <div id="games" className="scroll-mt-24">
+   843→   843→          <PortfolioSection number="03" title="GAME DEVELOPING" color="#ff0066">
+   844→   844→            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 md:gap-6">
+   845→   845→              {gameCards.map((card, i) => (
+   846→   846→                <PortfolioCard key={card.title} {...card} color="#ff0066" index={i} />
+   847→   847→              ))}
+   848→   848→            </div>
+   849→   849→          </PortfolioSection>
+   850→   850→        </div>
+   851→   851→
+   852→   852→        {/* ─── CONTACT / CTA ─── */}
+   853→   853→        <PortfolioSection number="04" title="CONTACT" color="#00ff88">
+   854→   854→          <div className="max-w-3xl">
+   855→   855→            <p className="text-white/40 text-sm sm:text-base md:text-lg mb-6 sm:mb-8 leading-relaxed">
+   856→   856→              Interested in working together? Let&apos;s create something extraordinary.
+   857→   857→              Drop me a message and let&apos;s bring your vision to life.
+   858→   858→            </p>
+   859→   859→
+   860→   860→            {/* Facebook - main CTA card */}
+   861→   861→            <motion.a
+   862→   862→              href="https://www.facebook.com/manwiseogc/"
+   863→   863→              target="_blank"
+   864→   864→              rel="noopener noreferrer"
+   865→   865→              className="contact-fb-card group relative block overflow-hidden rounded-xl border border-[#00ff8833] p-4 sm:p-6 md:p-8 mb-6 transition-all duration-500 hover:border-[#00ff8866]"
+   866→   866→              whileHover={{ scale: 1.01 }}
+   867→   867→              initial={{ opacity: 0, y: 20 }}
+   868→   868→              animate={{ opacity: 1, y: 0 }}
+   869→   869→              transition={{ duration: 0.6, delay: 0.2 }}
+   870→   870→            >
+   871→   871→              {/* background glow */}
+   872→   872→              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+   873→   873→                style={{ background: 'radial-gradient(circle at 30% 50%, #00ff8808, transparent 60%), radial-gradient(circle at 70% 50%, #00aaff06, transparent 60%)' }}
+   874→   874→              />
+   875→   875→
+   876→   876→              {/* animated border line */}
+   877→   877→              <div className="absolute top-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-700"
+   878→   878→                style={{ background: 'linear-gradient(90deg, #00ff88, #00aaff, #aa44ff, #ff0066)' }}
+   879→   879→              />
+   880→   880→
+   881→   881→              <div className="relative z-10 flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
+   882→   882→                {/* FB icon with glitch effect */}
+   883→   883→                <div className="contact-fb-icon flex-shrink-0 w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-xl border border-[#00ff8844] bg-[#0a0a0f] flex items-center justify-center group-hover:border-[#00ff88] transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+   884→   884→                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" className="sm:w-9 sm:h-9 transition-all duration-300 group-hover:scale-110">
+   885→   885→                    <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
+   886→   886→                  </svg>
+   887→   887→                </div>
+   888→   888→
+   889→   889→                <div className="flex-1 text-center sm:text-left">
+   890→   890→                  <div className="flex items-center justify-center sm:justify-start gap-2 sm:gap-3 mb-1 sm:mb-2">
+   891→   891→                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight" style={{ color: '#00ff88' }}>
+   892→   892→                      /manwiseogc
+   893→   893→                    </h3>
+   894→   894→                    <span className="font-mono text-[8px] sm:text-[10px] tracking-[0.2em] sm:tracking-[0.3em] text-[#00ff8866] border border-[#00ff8822] px-1.5 sm:px-2 py-0.5 rounded group-hover:text-[#00ff88] group-hover:border-[#00ff8844] transition-all duration-300">
+   895→   895→                      FACEBOOK
+   896→   896→                    </span>
+   897→   897→                  </div>
+   898→   898→                  <p className="text-white/30 text-xs sm:text-sm font-mono">
+   899→   899→                    {'>'} hit me up on facebook_ // connect & collab
+   900→   900→                  </p>
+   901→   901→                  {/* terminal style path */}
+   902→   902→                  <div className="mt-1.5 sm:mt-2 font-mono text-[9px] sm:text-[10px] text-white/15 tracking-wider">
+   903→   903→                    https://www.facebook.com/manwiseogc/
+   904→   904→                  </div>
+   905→   905→                </div>
+   906→   906→
+   907→   907→                {/* arrow indicator */}
+   908→   908→                <div className="flex-shrink-0 transition-all duration-500 group-hover:translate-x-2 group-hover:text-[#00ff88] text-white/20 hidden sm:block">
+   909→   909→                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+   910→   910→                    <path d="M5 12h14M12 5l7 7-7 7" />
+   911→   911→                  </svg>
+   912→   912→                </div>
+   913→   913→              </div>
+   914→   914→
+   915→   915→              {/* scan line on hover */}
+   916→   916→              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+   917→   917→                <div className="contact-scanline" />
+   918→   918→              </div>
+   919→   919→            </motion.a>
+   920→   920→
+   921→   921→            {/* secondary buttons */}
+   922→   922→            <div className="flex flex-wrap gap-3 sm:gap-4">
+   923→   923→              <a
+   924→   924→                href="mailto:hello@b3k1c.exe"
+   925→   925→                className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded border font-mono text-xs sm:text-sm tracking-widest transition-all duration-300 hover:shadow-[0_0_30px_rgba(0,255,136,0.2)]"
+   926→   926→                style={{ borderColor: '#00ff8866', color: '#00ff88' }}
+   927→   927→              >
+   928→   928→                <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
+   929→   929→                EMAIL
+   930→   930→              </a>
+   931→   931→              <a
+   932→   932→                href="#"
+   933→   933→                className="inline-flex items-center gap-2 sm:gap-3 px-4 sm:px-6 py-2.5 sm:py-3 rounded border font-mono text-xs sm:text-sm tracking-widest text-white/30 border-white/10 transition-all duration-300 hover:border-white/30 hover:text-white/60"
+   934→   934→              >
+   935→   935→                <span className="w-2 h-2 rounded-full bg-white/20" />
+   936→   936→                DOWNLOAD CV
+   937→   937→              </a>
+   938→   938→            </div>
+   939→   939→          </div>
+   940→   940→        </PortfolioSection>
+   941→   941→      </main>
+   942→   942→
+   943→   943→      <Footer />
+   944→   944→    </div>
+   945→   945→  )
+   946→   946→}
+   947→   947→
