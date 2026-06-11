@@ -633,6 +633,11 @@ export default function Home() {
       subtitle: 'Game Feature',
       image: '/portfolio/samp-case/klasikcase.png',
     },
+    {
+      title: 'SA:MP Handling Car System',
+      subtitle: 'Game Feature',
+      image: '/portfolio/samp-handling/handling.jpg',
+    },
     { title: 'Game Project 3', subtitle: 'Coming Soon' },
   ]
 
