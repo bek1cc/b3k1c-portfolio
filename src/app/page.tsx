@@ -97,15 +97,20 @@ function PortfolioSection({
   )
 }
 
-/* ─── lightbox modal ─── */
+/* ─── media item type ─── */
+type MediaItem = {
+  type: 'video' | 'image'
+  src: string
+  title: string
+}
+
+/* ─── lightbox modal - supports video + images with arrow nav ─── */
 function Lightbox({
-  images,
-  titles,
+  items,
   initialIndex,
   onClose,
 }: {
-  images: string[]
-  titles: string[]
+  items: MediaItem[]
   initialIndex: number
   onClose: () => void
 }) {
@@ -114,12 +119,14 @@ function Lightbox({
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
-      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, images.length - 1))
+      if (e.key === 'ArrowRight') setCurrent(c => Math.min(c + 1, items.length - 1))
       if (e.key === 'ArrowLeft') setCurrent(c => Math.max(c - 1, 0))
     }
     window.addEventListener('keydown', handleKey)
     return () => window.removeEventListener('keydown', handleKey)
-  }, [images.length, onClose])
+  }, [items.length, onClose])
+
+  const item = items[current]
 
   return (
     <AnimatePresence>
@@ -140,12 +147,20 @@ function Lightbox({
           </svg>
         </button>
 
-        {/* counter */}
-        <div className="absolute top-6 left-6 font-mono text-xs text-white/30 tracking-widest">
-          [{current + 1}/{images.length}]
+        {/* counter + media type badge */}
+        <div className="absolute top-6 left-6 flex items-center gap-3">
+          <span className="font-mono text-xs text-white/30 tracking-widest">
+            [{current + 1}/{items.length}]
+          </span>
+          {item.type === 'video' && (
+            <span className="flex items-center gap-1.5 font-mono text-[10px] tracking-widest text-red-400/70 border border-red-500/20 px-2 py-0.5 rounded">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+              VIDEO
+            </span>
+          )}
         </div>
 
-        {/* image */}
+        {/* media content */}
         <motion.div
           key={current}
           initial={{ opacity: 0, scale: 0.9 }}
@@ -154,36 +169,73 @@ function Lightbox({
           className="max-w-5xl w-full max-h-[80vh] relative"
           onClick={e => e.stopPropagation()}
         >
-          <img
-            src={images[current]}
-            alt={titles[current]}
-            className="w-full h-full object-contain rounded-lg"
-          />
+          {item.type === 'video' ? (
+            <video
+              src={item.src}
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+              autoPlay
+              loop
+              muted
+              playsInline
+              controls
+            />
+          ) : (
+            <img
+              src={item.src}
+              alt={item.title}
+              className="w-full max-h-[80vh] object-contain rounded-lg"
+            />
+          )}
           <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-[#0a0a0f] to-transparent rounded-b-lg">
-            <p className="font-mono text-sm text-white/60">{titles[current]}</p>
+            <p className="font-mono text-sm text-white/60">{item.title}</p>
           </div>
         </motion.div>
 
-        {/* nav buttons */}
-        {current > 0 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setCurrent(c => c - 1) }}
-            className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M15 18l-6-6 6-6" />
-            </svg>
-          </button>
+        {/* nav buttons - always show if multiple items */}
+        {items.length > 1 && (
+          <>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrent(c => c > 0 ? c - 1 : items.length - 1) }}
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+            <button
+              onClick={(e) => { e.stopPropagation(); setCurrent(c => c < items.length - 1 ? c + 1 : 0) }}
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M9 18l6-6-6-6" />
+              </svg>
+            </button>
+          </>
         )}
-        {current < images.length - 1 && (
-          <button
-            onClick={(e) => { e.stopPropagation(); setCurrent(c => c + 1) }}
-            className="absolute right-4 top-1/2 -translate-y-1/2 w-12 h-12 flex items-center justify-center rounded-full border border-white/10 text-white/40 hover:text-white hover:border-[#00aaff] transition-all"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M9 18l6-6-6-6" />
-            </svg>
-          </button>
+
+        {/* thumbnail strip at bottom */}
+        {items.length > 1 && (
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 p-2 rounded-xl bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/5" onClick={e => e.stopPropagation()}>
+            {items.map((m, i) => (
+              <button
+                key={i}
+                onClick={(e) => { e.stopPropagation(); setCurrent(i) }}
+                className={`w-10 h-7 rounded overflow-hidden border-2 transition-all duration-200 ${
+                  i === current ? 'border-[#00aaff] opacity-100 scale-110' : 'border-transparent opacity-40 hover:opacity-70'
+                }`}
+              >
+                {m.type === 'video' ? (
+                  <div className="w-full h-full bg-[#1a1a2e] flex items-center justify-center">
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="#00aaff" stroke="none">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </div>
+                ) : (
+                  <img src={m.src} alt="" className="w-full h-full object-cover" />
+                )}
+              </button>
+            ))}
+          </div>
         )}
       </motion.div>
     </AnimatePresence>
@@ -219,18 +271,19 @@ function PortfolioCard({
   const hasMedia = image || videoSrc
   const hasGallery = galleryImages && galleryImages.length > 0
 
-  // Build full images list for lightbox
-  const allImages = [
-    ...(image ? [image] : []),
-    ...(galleryImages || []),
-  ]
-  const allTitles = [
-    ...(image ? [title] : []),
-    ...(galleryTitles || []),
+  // Build media items list for lightbox (video first, then images)
+  const mediaItems: MediaItem[] = [
+    ...(videoSrc ? [{ type: 'video' as const, src: videoSrc, title: title }] : []),
+    ...(image ? [{ type: 'image' as const, src: image, title: title }] : []),
+    ...(galleryImages || []).map((src, i) => ({
+      type: 'image' as const,
+      src,
+      title: galleryTitles?.[i] || `Image ${i + 1}`,
+    })),
   ]
 
   const handleClick = () => {
-    if (hasGallery) {
+    if (mediaItems.length > 0) {
       setLightboxIndex(0)
     } else if (onClick) {
       onClick()
@@ -279,8 +332,8 @@ function PortfolioCard({
                   <span className="text-[9px] font-mono tracking-wider" style={{ color }}>{galleryImages!.length + 1}</span>
                 </div>
               )}
-              {/* click to expand overlay */}
-              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              {/* POGLEDAJ VIŠE overlay */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                 <div className="px-4 py-2 rounded-lg bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/10 flex items-center gap-2">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
                     <polyline points="15 3 21 3 21 9" />
@@ -338,7 +391,7 @@ function PortfolioCard({
             </div>
             {hasGallery && (
               <span className="text-[10px] font-mono tracking-wider" style={{ color: `${color}88` }}>
-                +{galleryImages!.length} slika
+                +{mediaItems.length} medija
               </span>
             )}
           </div>
@@ -347,10 +400,9 @@ function PortfolioCard({
       </motion.div>
 
       {/* lightbox */}
-      {lightboxIndex !== null && allImages.length > 0 && (
+      {lightboxIndex !== null && mediaItems.length > 0 && (
         <Lightbox
-          images={allImages}
-          titles={allTitles}
+          items={mediaItems}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
@@ -626,6 +678,18 @@ export default function Home() {
       title: 'Keramika LUX',
       subtitle: 'Ceramics & tiles website',
       videoSrc: '/portfolio/keramika-lux/keramika.mp4',
+      galleryImages: [
+        '/portfolio/keramika-lux/section-1.png',
+        '/portfolio/keramika-lux/section-2.png',
+        '/portfolio/keramika-lux/section-3.png',
+        '/portfolio/keramika-lux/section-4.png',
+      ],
+      galleryTitles: [
+        'Homepage',
+        'Products & Catalog',
+        'Gallery & Details',
+        'Contact Page',
+      ],
     },
     { title: 'Web Project 4', subtitle: 'Coming Soon' },
   ]
