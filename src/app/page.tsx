@@ -638,6 +638,11 @@ export default function Home() {
       subtitle: 'Game Feature',
       image: '/portfolio/samp-handling/handling.jpg',
     },
+    {
+      title: 'SA:MP Kliziste System',
+      subtitle: 'v0.1',
+      videoSrc: '/portfolio/samp-kliziste/kliziste.mp4',
+    },
     { title: 'Game Project 3', subtitle: 'Coming Soon' },
   ]
 
