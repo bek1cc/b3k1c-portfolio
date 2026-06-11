@@ -543,6 +543,55 @@ video {
   background: #0a0a0f;
 }
 
+/* ===== CONTACT FACEBOOK CARD ===== */
+.contact-fb-card {
+  background: linear-gradient(135deg, #0a0a0f 0%, #0d1117 50%, #0a0a0f 100%);
+  position: relative;
+}
+
+.contact-fb-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #00ff8844, transparent);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.contact-fb-card:hover::after {
+  opacity: 1;
+}
+
+.contact-fb-icon {
+  animation: fb-icon-pulse 3s ease-in-out infinite;
+}
+
+@keyframes fb-icon-pulse {
+  0%, 100% { box-shadow: 0 0 10px rgba(0, 255, 136, 0.05); }
+  50% { box-shadow: 0 0 20px rgba(0, 255, 136, 0.15); }
+}
+
+/* scanline on contact card hover */
+.contact-scanline {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, #00ff8866, #00aaff66, #aa44ff44, transparent);
+  animation: contact-scanline-move 2s linear infinite;
+}
+
+@keyframes contact-scanline-move {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
 /* ===== EXPAND GALLERY ANIMATION ===== */
 @keyframes gallery-item-in {
   0% {

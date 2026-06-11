@@ -690,11 +690,74 @@ export default function Home() {
 
         {/* ─── CONTACT / CTA ─── */}
         <PortfolioSection number="04" title="CONTACT" color="#00ff88">
-          <div className="max-w-2xl">
+          <div className="max-w-3xl">
             <p className="text-white/40 text-base md:text-lg mb-8 leading-relaxed">
               Interested in working together? Let&apos;s create something extraordinary.
               Drop me a message and let&apos;s bring your vision to life.
             </p>
+
+            {/* Facebook - main CTA card */}
+            <motion.a
+              href="https://www.facebook.com/manwiseogc/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="contact-fb-card group relative block overflow-hidden rounded-xl border border-[#00ff8833] p-6 md:p-8 mb-6 transition-all duration-500 hover:border-[#00ff8866]"
+              whileHover={{ scale: 1.01 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              {/* background glow */}
+              <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
+                style={{ background: 'radial-gradient(circle at 30% 50%, #00ff8808, transparent 60%), radial-gradient(circle at 70% 50%, #00aaff06, transparent 60%)' }}
+              />
+
+              {/* animated border line */}
+              <div className="absolute top-0 left-0 h-[2px] w-0 group-hover:w-full transition-all duration-700"
+                style={{ background: 'linear-gradient(90deg, #00ff88, #00aaff, #aa44ff, #ff0066)' }}
+              />
+
+              <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+                {/* FB icon with glitch effect */}
+                <div className="contact-fb-icon flex-shrink-0 w-16 h-16 md:w-20 md:h-20 rounded-xl border border-[#00ff8844] bg-[#0a0a0f] flex items-center justify-center group-hover:border-[#00ff88] transition-all duration-500 group-hover:shadow-[0_0_30px_rgba(0,255,136,0.3)]">
+                  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="transition-all duration-300 group-hover:scale-110">
+                    <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" stroke="#00ff88" strokeWidth="1.5" fill="none" />
+                  </svg>
+                </div>
+
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-center md:justify-start gap-3 mb-2">
+                    <h3 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color: '#00ff88' }}>
+                      /manwiseogc
+                    </h3>
+                    <span className="font-mono text-[10px] tracking-[0.3em] text-[#00ff8866] border border-[#00ff8822] px-2 py-0.5 rounded group-hover:text-[#00ff88] group-hover:border-[#00ff8844] transition-all duration-300">
+                      FACEBOOK
+                    </span>
+                  </div>
+                  <p className="text-white/30 text-sm font-mono">
+                    {'>'} hit me up on facebook_ // connect & collab
+                  </p>
+                  {/* terminal style path */}
+                  <div className="mt-2 font-mono text-[10px] text-white/15 tracking-wider">
+                    https://www.facebook.com/manwiseogc/
+                  </div>
+                </div>
+
+                {/* arrow indicator */}
+                <div className="flex-shrink-0 transition-all duration-500 group-hover:translate-x-2 group-hover:text-[#00ff88] text-white/20">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M12 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* scan line on hover */}
+              <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                <div className="contact-scanline" />
+              </div>
+            </motion.a>
+
+            {/* secondary buttons */}
             <div className="flex flex-wrap gap-4">
               <a
                 href="mailto:hello@b3k1c.exe"
@@ -702,7 +765,7 @@ export default function Home() {
                 style={{ borderColor: '#00ff8866', color: '#00ff88' }}
               >
                 <span className="w-2 h-2 rounded-full bg-[#00ff88]" />
-                GET IN TOUCH
+                EMAIL
               </a>
               <a
                 href="#"
