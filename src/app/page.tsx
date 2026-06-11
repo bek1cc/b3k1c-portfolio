@@ -770,6 +770,11 @@ export default function Home() {
       subtitle: 'Logo Design',
       image: '/portfolio/unicate-ogc/logo.jpg',
     },
+    {
+      title: 'ENB Host- Visual Design',
+      subtitle: 'Visual Identity',
+      videoSrc: '/portfolio/enb-host/enb.mp4',
+    },
     { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
     { title: 'UI/UX Concept', subtitle: 'Mobile & Web' },
     { title: 'Illustration', subtitle: 'Digital Art & Vector' },
