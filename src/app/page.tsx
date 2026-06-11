@@ -622,7 +622,12 @@ export default function Home() {
       galleryImages: flambeImages,
       galleryTitles: flambeTitles,
     },
-    { title: 'Web Project 3', subtitle: 'Coming Soon' },
+    {
+      title: 'Keramika LUX',
+      subtitle: 'Ceramics & tiles website',
+      videoSrc: '/portfolio/keramika-lux/keramika.mp4',
+    },
+    { title: 'Web Project 4', subtitle: 'Coming Soon' },
   ]
 
   /* DESIGNS section cards */
