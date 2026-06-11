@@ -617,11 +617,15 @@ export default function Home() {
     { title: 'Packaging', subtitle: 'Product Design' },
   ]
 
+  /* GAME DEV section cards */
   const gameCards = [
-    { title: 'Indie Game', subtitle: 'Unity / Unreal' },
-    { title: 'Game Concept', subtitle: 'Level Design' },
-    { title: '3D Assets', subtitle: 'Blender & ZBrush' },
-    { title: 'Game UI', subtitle: 'HUD & Menus' },
+    {
+      title: 'SA:MP Phone System',
+      subtitle: 'v0.1',
+      videoSrc: '/portfolio/samp-phone/sampphone.mp4',
+    },
+    { title: 'Game Project 2', subtitle: 'Coming Soon' },
+    { title: 'Game Project 3', subtitle: 'Coming Soon' },
   ]
 
   return (
