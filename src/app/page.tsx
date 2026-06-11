@@ -76,7 +76,7 @@ function PortfolioSection({
             className="text-3xl md:text-5xl font-bold tracking-tight"
             style={{
               color,
-              textShadow: `0 0 10px ${color}66, 0 0 30px ${color}33`,
+              textShadow: `0 0 20px ${color}44`,
             }}
           >
             {title}
@@ -272,13 +272,14 @@ function Lightbox({
   )
 }
 
-/* ─── project showcase (1 main image + 5 thumbnails) ─── */
+/* ─── compact project showcase with video + expandable gallery ─── */
 function ProjectShowcase({
   title,
   description,
   tags,
   images,
   imageTitles,
+  videoSrc,
   color,
   liveUrl,
 }: {
@@ -287,18 +288,20 @@ function ProjectShowcase({
   tags: string[]
   images: string[]
   imageTitles: string[]
+  videoSrc?: string
   color: string
   liveUrl?: string
 }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [mainImage, setMainImage] = useState(0)
+  const [expanded, setExpanded] = useState(false)
 
-  // Show up to 6 images (1 main + 5 thumbnails)
-  const displayImages = images.slice(0, 6)
-  const displayTitles = imageTitles.slice(0, 6)
-  const thumbs = displayImages.slice(1) // 5 thumbnails
+  // Featured image is the first one
+  const featuredImage = images[0]
+  const featuredTitle = imageTitles[0]
+  const galleryImages = images.slice(1)
+  const galleryTitles = imageTitles.slice(1)
 
   return (
     <>
@@ -309,20 +312,21 @@ function ProjectShowcase({
         transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
         className="relative"
       >
-        {/* project info bar */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div>
-            <h3 className="text-xl md:text-2xl font-bold tracking-tight" style={{ color }}>
-              {title}
-            </h3>
-            <p className="text-white/40 text-sm mt-1">{description}</p>
+        {/* project info bar - compact */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-1.5 h-8 rounded-full" style={{ background: color, boxShadow: `0 0 10px ${color}66` }} />
+            <div>
+              <h3 className="text-lg md:text-xl font-bold tracking-tight" style={{ color }}>{title}</h3>
+              <p className="text-white/30 text-xs mt-0.5">{description}</p>
+            </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             {tags.map(tag => (
               <span
                 key={tag}
-                className="px-3 py-1 rounded-full text-xs font-mono tracking-wider border"
-                style={{ borderColor: `${color}44`, color: `${color}aa`, background: `${color}08` }}
+                className="px-2.5 py-0.5 rounded-full text-[10px] font-mono tracking-wider border"
+                style={{ borderColor: `${color}33`, color: `${color}88`, background: `${color}08` }}
               >
                 {tag}
               </span>
@@ -332,8 +336,8 @@ function ProjectShowcase({
                 href={liveUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-1.5 rounded-full text-xs font-mono tracking-wider border transition-all duration-300 hover:shadow-[0_0_20px_rgba(0,170,255,0.3)]"
-                style={{ borderColor: `${color}66`, color }}
+                className="px-3 py-1 rounded-full text-[10px] font-mono tracking-wider border transition-all duration-300 hover:shadow-[0_0_15px_rgba(0,170,255,0.3)]"
+                style={{ borderColor: `${color}55`, color }}
               >
                 LIVE →
               </a>
@@ -341,78 +345,193 @@ function ProjectShowcase({
           </div>
         </div>
 
-        {/* main image + thumbnails layout */}
-        <div className="flex flex-col lg:flex-row gap-3">
-          {/* main image */}
+        {/* main content: video + featured image side by side */}
+        <div className="flex flex-col md:flex-row gap-3">
+          {/* video player - takes most space */}
+          {videoSrc && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={isInView ? { opacity: 1, scale: 1 } : {}}
+              transition={{ duration: 0.6 }}
+              className="relative group overflow-hidden rounded-lg border border-white/5 flex-1 md:flex-[2]"
+            >
+              <video
+                src={videoSrc}
+                className="w-full h-[200px] sm:h-[250px] md:h-[280px] object-cover object-top"
+                autoPlay
+                loop
+                muted
+                playsInline
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/50 via-transparent to-transparent pointer-events-none" />
+              {/* video badge */}
+              <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[10px] font-mono text-white/60 tracking-wider">VIDEO</span>
+              </div>
+              {/* glow on hover */}
+              <div
+                className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+                style={{ boxShadow: `inset 0 0 30px ${color}15, 0 0 20px ${color}08` }}
+              />
+            </motion.div>
+          )}
+
+          {/* featured screenshot */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={isInView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
             className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 flex-1"
-            onClick={() => setLightboxIndex(mainImage)}
+            onClick={() => setLightboxIndex(0)}
           >
             <img
-              src={displayImages[mainImage]}
-              alt={displayTitles[mainImage]}
-              className="w-full h-[250px] sm:h-[350px] lg:h-[400px] object-cover object-top transition-all duration-700 group-hover:scale-[1.03] group-hover:brightness-110"
+              src={featuredImage}
+              alt={featuredTitle}
+              className="w-full h-[200px] sm:h-[250px] md:h-[280px] object-cover object-top transition-all duration-700 group-hover:scale-[1.03] group-hover:brightness-110"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/70 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-4">
-              <p className="font-mono text-sm" style={{ color }}>{displayTitles[mainImage]}</p>
-              <p className="font-mono text-xs text-white/30 mt-1">Click to view full size</p>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/60 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-3">
+              <p className="font-mono text-xs" style={{ color }}>{featuredTitle}</p>
             </div>
             {/* glow on hover */}
             <div
               className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-              style={{ boxShadow: `inset 0 0 30px ${color}22, 0 0 20px ${color}11` }}
+              style={{ boxShadow: `inset 0 0 30px ${color}15, 0 0 20px ${color}08` }}
             />
           </motion.div>
-
-          {/* thumbnails column */}
-          <div className="flex flex-row lg:flex-col gap-2 lg:w-[200px] xl:w-[240px]">
-            {thumbs.map((thumb, i) => {
-              const realIndex = i + 1 // offset by 1 since main is 0
-              const isActive = mainImage === realIndex
-              return (
-                <motion.div
-                  key={realIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={isInView ? { opacity: 1, x: 0 } : {}}
-                  transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
-                  className={`relative group cursor-pointer overflow-hidden rounded-lg border flex-1 transition-all duration-300 ${
-                    isActive ? `border-[${color}88]` : 'border-white/5 hover:border-white/20'
-                  }`}
-                  style={isActive ? { borderColor: `${color}88`, boxShadow: `0 0 15px ${color}22` } : undefined}
-                  onClick={() => setMainImage(realIndex)}
-                >
-                  <img
-                    src={thumb}
-                    alt={displayTitles[realIndex]}
-                    className="w-full h-[70px] sm:h-[80px] lg:h-[70px] object-cover object-top transition-all duration-500 group-hover:brightness-125"
-                    style={isActive ? { filter: 'brightness(1.2)' } : undefined}
-                  />
-                  <div className="absolute inset-0 bg-[#0a0a0f]/30 group-hover:bg-transparent transition-all duration-300" />
-                  {/* active indicator dot */}
-                  {isActive && (
-                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
-                  )}
-                </motion.div>
-              )
-            })}
-          </div>
         </div>
+
+        {/* "Pogledaj više" expand button */}
+        {galleryImages.length > 0 && (
+          <motion.button
+            onClick={() => setExpanded(!expanded)}
+            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all duration-300 group/btn"
+            style={{
+              borderColor: expanded ? `${color}55` : `${color}22`,
+              background: expanded ? `${color}08` : 'transparent',
+            }}
+            whileHover={{ borderColor: `${color}66` }}
+          >
+            <span
+              className="font-mono text-xs tracking-[0.2em] transition-colors duration-300"
+              style={{ color: `${color}aa` }}
+            >
+              {expanded ? 'SAKRIJ' : 'POGLEDAJ VIŠE'}
+            </span>
+            <motion.span
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ color: `${color}aa` }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M6 9l6 6 6-6" />
+              </svg>
+            </motion.span>
+            <span className="font-mono text-[10px] text-white/20 ml-1">
+              ({galleryImages.length} slika)
+            </span>
+          </motion.button>
+        )}
+
+        {/* expandable gallery grid */}
+        <AnimatePresence>
+          {expanded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pt-3">
+                {galleryImages.map((img, i) => {
+                  const realIndex = i + 1
+                  return (
+                    <motion.div
+                      key={realIndex}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ duration: 0.3, delay: i * 0.05 }}
+                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 hover:border-white/20 transition-all duration-300"
+                      onClick={() => setLightboxIndex(realIndex)}
+                    >
+                      <img
+                        src={img}
+                        alt={galleryTitles[i]}
+                        className="w-full h-[100px] sm:h-[120px] object-cover object-top transition-all duration-500 group-hover:brightness-125 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-[#0a0a0f]/40 group-hover:bg-transparent transition-all duration-300" />
+                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-[#0a0a0f]/80 to-transparent">
+                        <p className="font-mono text-[10px] text-white/50 truncate">{galleryTitles[i]}</p>
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </motion.div>
 
       {/* lightbox */}
       {lightboxIndex !== null && (
         <Lightbox
-          images={displayImages}
-          titles={displayTitles}
+          images={images}
+          titles={imageTitles}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
       )}
     </>
+  )
+}
+
+/* ─── b3k1c text logo component ─── */
+function B3k1cLogo() {
+  // The characters "b3k1c" arranged creatively:
+  // b = bracket/container, 3 = mirrored E, k = forward slash arms, 1 = vertical line, c = open circle
+  // We'll make each letter individually animated and styled
+
+  const chars = [
+    { char: 'b', color: '#00ff88', delay: 0 },
+    { char: '3', color: '#00aaff', delay: 0.1 },
+    { char: 'k', color: '#aa44ff', delay: 0.2 },
+    { char: '1', color: '#ff0066', delay: 0.3 },
+    { char: 'c', color: '#00ff88', delay: 0.4 },
+  ]
+
+  return (
+    <div className="b3k1c-logo-container">
+      <div className="b3k1c-logo-inner">
+        {chars.map((c, i) => (
+          <span
+            key={i}
+            className="b3k1c-char"
+            style={{
+              color: c.color,
+              animationDelay: `${c.delay}s`,
+              textShadow: `0 0 10px ${c.color}88, 0 0 20px ${c.color}44, 0 0 40px ${c.color}22`,
+            }}
+          >
+            {c.char}
+          </span>
+        ))}
+      </div>
+      {/* glitch layer copies */}
+      <div className="b3k1c-logo-glitch-1" aria-hidden="true">
+        {chars.map((c, i) => (
+          <span key={i} style={{ color: '#ff0066', animationDelay: `${c.delay}s` }}>{c.char}</span>
+        ))}
+      </div>
+      <div className="b3k1c-logo-glitch-2" aria-hidden="true">
+        {chars.map((c, i) => (
+          <span key={i} style={{ color: '#00aaff', animationDelay: `${c.delay}s` }}>{c.char}</span>
+        ))}
+      </div>
+      {/* decorative scan line across logo */}
+      <div className="b3k1c-logo-scanline" />
+    </div>
   )
 }
 
@@ -453,12 +572,8 @@ function Hero() {
         style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
         className="relative z-10 mb-8"
       >
-        <div className="relative logo-ring p-3">
-          <img
-            src="/b3k1c-logo.png"
-            alt="b3k1c.exe logo"
-            className="w-32 h-32 md:w-48 md:h-48 object-contain logo-hologram rounded-full"
-          />
+        <div className="relative logo-ring p-4">
+          <B3k1cLogo />
         </div>
       </motion.div>
 
@@ -694,10 +809,11 @@ export default function Home() {
             {/* Featured project: Tomek Instalacije */}
             <ProjectShowcase
               title="Tomek Instalacije"
-              description="Full website for plumbing & heating company — dark theme, responsive design, gallery, contact form"
+              description="Full website for plumbing & heating company"
               tags={['Next.js', 'TypeScript', 'Tailwind', 'Responsive']}
               images={tomekImages}
               imageTitles={tomekTitles}
+              videoSrc="/portfolio/tomek-instalacije/tomekinstalacije.mp4"
               color="#00aaff"
             />
           </PortfolioSection>
