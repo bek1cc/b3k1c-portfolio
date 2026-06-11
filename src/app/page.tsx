@@ -272,7 +272,7 @@ function Lightbox({
   )
 }
 
-/* ─── project showcase (full-width featured project) ─── */
+/* ─── project showcase (1 main image + 5 thumbnails) ─── */
 function ProjectShowcase({
   title,
   description,
@@ -293,6 +293,12 @@ function ProjectShowcase({
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+  const [mainImage, setMainImage] = useState(0)
+
+  // Show up to 6 images (1 main + 5 thumbnails)
+  const displayImages = images.slice(0, 6)
+  const displayTitles = imageTitles.slice(0, 6)
+  const thumbs = displayImages.slice(1) // 5 thumbnails
 
   return (
     <>
@@ -311,7 +317,7 @@ function ProjectShowcase({
             </h3>
             <p className="text-white/40 text-sm mt-1">{description}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-wrap">
             {tags.map(tag => (
               <span
                 key={tag}
@@ -335,43 +341,73 @@ function ProjectShowcase({
           </div>
         </div>
 
-        {/* image grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-          {images.map((img, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              animate={isInView ? { opacity: 1, y: 0 } : {}}
-              transition={{ duration: 0.5, delay: i * 0.08 }}
-              className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5"
-              onClick={() => setLightboxIndex(i)}
-              style={i === 0 ? { gridColumn: 'span 2', gridRow: 'span 2' } : undefined}
-            >
-              <img
-                src={img}
-                alt={imageTitles[i]}
-                className="w-full h-full object-cover object-top transition-all duration-700 group-hover:scale-105 group-hover:brightness-110"
-                style={i === 0 ? { minHeight: '300px' } : { minHeight: '150px' }}
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              <div className="absolute bottom-0 left-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                <p className="font-mono text-xs" style={{ color }}>{imageTitles[i]}</p>
-              </div>
-              {/* glow border on hover */}
-              <div
-                className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                style={{ boxShadow: `inset 0 0 30px ${color}22, 0 0 20px ${color}11` }}
-              />
-            </motion.div>
-          ))}
+        {/* main image + thumbnails layout */}
+        <div className="flex flex-col lg:flex-row gap-3">
+          {/* main image */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={isInView ? { opacity: 1, scale: 1 } : {}}
+            transition={{ duration: 0.6 }}
+            className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 flex-1"
+            onClick={() => setLightboxIndex(mainImage)}
+          >
+            <img
+              src={displayImages[mainImage]}
+              alt={displayTitles[mainImage]}
+              className="w-full h-[250px] sm:h-[350px] lg:h-[400px] object-cover object-top transition-all duration-700 group-hover:scale-[1.03] group-hover:brightness-110"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/70 via-transparent to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-4">
+              <p className="font-mono text-sm" style={{ color }}>{displayTitles[mainImage]}</p>
+              <p className="font-mono text-xs text-white/30 mt-1">Click to view full size</p>
+            </div>
+            {/* glow on hover */}
+            <div
+              className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+              style={{ boxShadow: `inset 0 0 30px ${color}22, 0 0 20px ${color}11` }}
+            />
+          </motion.div>
+
+          {/* thumbnails column */}
+          <div className="flex flex-row lg:flex-col gap-2 lg:w-[200px] xl:w-[240px]">
+            {thumbs.map((thumb, i) => {
+              const realIndex = i + 1 // offset by 1 since main is 0
+              const isActive = mainImage === realIndex
+              return (
+                <motion.div
+                  key={realIndex}
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={isInView ? { opacity: 1, x: 0 } : {}}
+                  transition={{ duration: 0.4, delay: 0.1 + i * 0.06 }}
+                  className={`relative group cursor-pointer overflow-hidden rounded-lg border flex-1 transition-all duration-300 ${
+                    isActive ? `border-[${color}88]` : 'border-white/5 hover:border-white/20'
+                  }`}
+                  style={isActive ? { borderColor: `${color}88`, boxShadow: `0 0 15px ${color}22` } : undefined}
+                  onClick={() => setMainImage(realIndex)}
+                >
+                  <img
+                    src={thumb}
+                    alt={displayTitles[realIndex]}
+                    className="w-full h-[70px] sm:h-[80px] lg:h-[70px] object-cover object-top transition-all duration-500 group-hover:brightness-125"
+                    style={isActive ? { filter: 'brightness(1.2)' } : undefined}
+                  />
+                  <div className="absolute inset-0 bg-[#0a0a0f]/30 group-hover:bg-transparent transition-all duration-300" />
+                  {/* active indicator dot */}
+                  {isActive && (
+                    <div className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ background: color, boxShadow: `0 0 8px ${color}` }} />
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
         </div>
       </motion.div>
 
       {/* lightbox */}
       {lightboxIndex !== null && (
         <Lightbox
-          images={images}
-          titles={imageTitles}
+          images={displayImages}
+          titles={displayTitles}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
