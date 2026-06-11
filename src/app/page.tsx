@@ -97,88 +97,6 @@ function PortfolioSection({
   )
 }
 
-/* ─── portfolio card with optional image ─── */
-function PortfolioCard({
-  title,
-  subtitle,
-  color,
-  index,
-  image,
-  onClick,
-}: {
-  title: string
-  subtitle: string
-  color: string
-  index: number
-  image?: string
-  onClick?: () => void
-}) {
-  const ref = useRef(null)
-  const isInView = useInView(ref, { once: true, margin: '-50px' })
-
-  return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 50, scale: 0.95 }}
-      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
-      transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
-      className="portfolio-item corner-decor rounded-lg group cursor-pointer"
-      onClick={onClick}
-    >
-      {/* image area */}
-      <div
-        className="aspect-[4/3] relative overflow-hidden"
-        style={!image ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
-      >
-        {image ? (
-          <>
-            <img
-              src={image}
-              alt={title}
-              className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
-          </>
-        ) : (
-          <>
-            <div className="absolute inset-0 cyber-grid opacity-40" />
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
-              <div
-                className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
-                style={{ borderColor: `${color}66` }}
-              >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-              </div>
-              <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
-                Upload Content
-              </span>
-            </div>
-          </>
-        )}
-
-        {/* hover overlay */}
-        <div
-          className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-          style={{
-            background: `linear-gradient(180deg, transparent 40%, ${color}15 100%)`,
-          }}
-        />
-      </div>
-
-      {/* card info */}
-      <div className="p-4 md:p-5">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full" style={{ background: color }} />
-          <h3 className="font-semibold text-sm md:text-base tracking-wide">{title}</h3>
-        </div>
-        <p className="text-xs md:text-sm text-white/40 pl-4">{subtitle}</p>
-      </div>
-    </motion.div>
-  )
-}
-
 /* ─── lightbox modal ─── */
 function Lightbox({
   images,
@@ -272,213 +190,167 @@ function Lightbox({
   )
 }
 
-/* ─── compact project showcase with video + expandable gallery ─── */
-function ProjectShowcase({
+/* ─── portfolio card - can show image, video, or placeholder ─── */
+function PortfolioCard({
   title,
-  description,
-  tags,
-  images,
-  imageTitles,
-  videoSrc,
+  subtitle,
   color,
-  liveUrl,
+  index,
+  image,
+  videoSrc,
+  galleryImages,
+  galleryTitles,
+  onClick,
 }: {
   title: string
-  description: string
-  tags: string[]
-  images: string[]
-  imageTitles: string[]
-  videoSrc?: string
+  subtitle: string
   color: string
-  liveUrl?: string
+  index: number
+  image?: string
+  videoSrc?: string
+  galleryImages?: string[]
+  galleryTitles?: string[]
+  onClick?: () => void
 }) {
   const ref = useRef(null)
   const isInView = useInView(ref, { once: true, margin: '-50px' })
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [expanded, setExpanded] = useState(false)
 
-  // Featured image is the first one
-  const featuredImage = images[0]
-  const featuredTitle = imageTitles[0]
-  const galleryImages = images.slice(1)
-  const galleryTitles = imageTitles.slice(1)
+  const hasMedia = image || videoSrc
+  const hasGallery = galleryImages && galleryImages.length > 0
+
+  // Build full images list for lightbox
+  const allImages = [
+    ...(image ? [image] : []),
+    ...(galleryImages || []),
+  ]
+  const allTitles = [
+    ...(image ? [title] : []),
+    ...(galleryTitles || []),
+  ]
+
+  const handleClick = () => {
+    if (hasGallery) {
+      setLightboxIndex(0)
+    } else if (onClick) {
+      onClick()
+    }
+  }
 
   return (
     <>
       <motion.div
         ref={ref}
-        initial={{ opacity: 0, y: 60 }}
-        animate={isInView ? { opacity: 1, y: 0 } : {}}
-        transition={{ duration: 0.8, ease: [0.23, 1, 0.32, 1] }}
-        className="relative"
+        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+        animate={isInView ? { opacity: 1, y: 0, scale: 1 } : {}}
+        transition={{ duration: 0.6, delay: index * 0.1, ease: [0.23, 1, 0.32, 1] }}
+        className="portfolio-item corner-decor rounded-lg group cursor-pointer"
+        onClick={handleClick}
       >
-        {/* project info bar - compact */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-          <div className="flex items-center gap-3">
-            <div className="w-1.5 h-8 rounded-full" style={{ background: color, boxShadow: `0 0 10px ${color}66` }} />
-            <div>
-              <h3 className="text-lg md:text-xl font-bold tracking-tight" style={{ color }}>{title}</h3>
-              <p className="text-white/30 text-xs mt-0.5">{description}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {tags.map(tag => (
-              <span
-                key={tag}
-                className="px-2.5 py-0.5 rounded-full text-[10px] font-mono tracking-wider border"
-                style={{ borderColor: `${color}33`, color: `${color}88`, background: `${color}08` }}
-              >
-                {tag}
-              </span>
-            ))}
-            {liveUrl && (
-              <a
-                href={liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-1 rounded-full text-[10px] font-mono tracking-wider border transition-all duration-300 hover:shadow-[0_0_15px_rgba(0,170,255,0.3)]"
-                style={{ borderColor: `${color}55`, color }}
-              >
-                LIVE →
-              </a>
-            )}
-          </div>
-        </div>
-
-        {/* main content: video + featured image side by side */}
-        <div className="flex flex-col md:flex-row gap-3">
-          {/* video player - takes most space */}
-          {videoSrc && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={isInView ? { opacity: 1, scale: 1 } : {}}
-              transition={{ duration: 0.6 }}
-              className="relative group overflow-hidden rounded-lg border border-white/5 flex-1 md:flex-[2]"
-            >
+        {/* media area */}
+        <div
+          className="aspect-[4/3] relative overflow-hidden"
+          style={!hasMedia ? { background: `linear-gradient(135deg, ${color}11, ${color}05)` } : undefined}
+        >
+          {videoSrc ? (
+            <>
               <video
                 src={videoSrc}
-                className="w-full h-[200px] sm:h-[250px] md:h-[280px] object-cover object-top"
+                className="w-full h-full object-cover object-top"
                 autoPlay
                 loop
                 muted
                 playsInline
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/50 via-transparent to-transparent pointer-events-none" />
-              {/* video badge */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-50" />
+              {/* video indicator */}
               <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2 py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
-                <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                <span className="text-[10px] font-mono text-white/60 tracking-wider">VIDEO</span>
+                <div className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-[9px] font-mono text-white/50 tracking-widest">REC</span>
               </div>
-              {/* glow on hover */}
-              <div
-                className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-                style={{ boxShadow: `inset 0 0 30px ${color}15, 0 0 20px ${color}08` }}
+              {/* gallery count badge */}
+              {hasGallery && (
+                <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 rounded bg-[#0a0a0f]/70 backdrop-blur-sm border border-white/10">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                    <circle cx="8.5" cy="8.5" r="1.5" />
+                    <polyline points="21 15 16 10 5 21" />
+                  </svg>
+                  <span className="text-[9px] font-mono tracking-wider" style={{ color }}>{galleryImages!.length + 1}</span>
+                </div>
+              )}
+              {/* click to expand overlay */}
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                <div className="px-4 py-2 rounded-lg bg-[#0a0a0f]/80 backdrop-blur-sm border border-white/10 flex items-center gap-2">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+                    <polyline points="15 3 21 3 21 9" />
+                    <polyline points="9 21 3 21 3 15" />
+                    <line x1="21" y1="3" x2="14" y2="10" />
+                    <line x1="3" y1="21" x2="10" y2="14" />
+                  </svg>
+                  <span className="text-[10px] font-mono tracking-[0.15em]" style={{ color }}>POGLEDAJ VIŠE</span>
+                </div>
+              </div>
+            </>
+          ) : image ? (
+            <>
+              <img
+                src={image}
+                alt={title}
+                className="w-full h-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
               />
-            </motion.div>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f] via-transparent to-transparent opacity-60" />
+            </>
+          ) : (
+            <>
+              <div className="absolute inset-0 cyber-grid opacity-40" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+                <div
+                  className="w-12 h-12 rounded-full border-2 flex items-center justify-center transition-all duration-300 group-hover:scale-110"
+                  style={{ borderColor: `${color}66` }}
+                >
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </div>
+                <span className="text-xs tracking-widest uppercase" style={{ color: `${color}88` }}>
+                  Upload Content
+                </span>
+              </div>
+            </>
           )}
 
-          {/* featured screenshot */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={isInView ? { opacity: 1, scale: 1 } : {}}
-            transition={{ duration: 0.6, delay: 0.1 }}
-            className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 flex-1"
-            onClick={() => setLightboxIndex(0)}
-          >
-            <img
-              src={featuredImage}
-              alt={featuredTitle}
-              className="w-full h-[200px] sm:h-[250px] md:h-[280px] object-cover object-top transition-all duration-700 group-hover:scale-[1.03] group-hover:brightness-110"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0f]/60 via-transparent to-transparent" />
-            <div className="absolute bottom-0 left-0 right-0 p-3">
-              <p className="font-mono text-xs" style={{ color }}>{featuredTitle}</p>
-            </div>
-            {/* glow on hover */}
-            <div
-              className="absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
-              style={{ boxShadow: `inset 0 0 30px ${color}15, 0 0 20px ${color}08` }}
-            />
-          </motion.div>
+          {/* hover glow */}
+          <div
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+            style={{
+              background: `linear-gradient(180deg, transparent 40%, ${color}15 100%)`,
+            }}
+          />
         </div>
 
-        {/* "Pogledaj više" expand button */}
-        {galleryImages.length > 0 && (
-          <motion.button
-            onClick={() => setExpanded(!expanded)}
-            className="mt-3 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg border transition-all duration-300 group/btn"
-            style={{
-              borderColor: expanded ? `${color}55` : `${color}22`,
-              background: expanded ? `${color}08` : 'transparent',
-            }}
-            whileHover={{ borderColor: `${color}66` }}
-          >
-            <span
-              className="font-mono text-xs tracking-[0.2em] transition-colors duration-300"
-              style={{ color: `${color}aa` }}
-            >
-              {expanded ? 'SAKRIJ' : 'POGLEDAJ VIŠE'}
-            </span>
-            <motion.span
-              animate={{ rotate: expanded ? 180 : 0 }}
-              transition={{ duration: 0.3 }}
-              style={{ color: `${color}aa` }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M6 9l6 6 6-6" />
-              </svg>
-            </motion.span>
-            <span className="font-mono text-[10px] text-white/20 ml-1">
-              ({galleryImages.length} slika)
-            </span>
-          </motion.button>
-        )}
-
-        {/* expandable gallery grid */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }}
-              className="overflow-hidden"
-            >
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pt-3">
-                {galleryImages.map((img, i) => {
-                  const realIndex = i + 1
-                  return (
-                    <motion.div
-                      key={realIndex}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.3, delay: i * 0.05 }}
-                      className="relative group cursor-pointer overflow-hidden rounded-lg border border-white/5 hover:border-white/20 transition-all duration-300"
-                      onClick={() => setLightboxIndex(realIndex)}
-                    >
-                      <img
-                        src={img}
-                        alt={galleryTitles[i]}
-                        className="w-full h-[100px] sm:h-[120px] object-cover object-top transition-all duration-500 group-hover:brightness-125 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-[#0a0a0f]/40 group-hover:bg-transparent transition-all duration-300" />
-                      <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-[#0a0a0f]/80 to-transparent">
-                        <p className="font-mono text-[10px] text-white/50 truncate">{galleryTitles[i]}</p>
-                      </div>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* card info */}
+        <div className="p-4 md:p-5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full" style={{ background: color }} />
+              <h3 className="font-semibold text-sm md:text-base tracking-wide">{title}</h3>
+            </div>
+            {hasGallery && (
+              <span className="text-[10px] font-mono tracking-wider" style={{ color: `${color}88` }}>
+                +{galleryImages!.length} slika
+              </span>
+            )}
+          </div>
+          <p className="text-xs md:text-sm text-white/40 pl-4 mt-0.5">{subtitle}</p>
+        </div>
       </motion.div>
 
       {/* lightbox */}
-      {lightboxIndex !== null && (
+      {lightboxIndex !== null && allImages.length > 0 && (
         <Lightbox
-          images={images}
-          titles={imageTitles}
+          images={allImages}
+          titles={allTitles}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
@@ -487,50 +359,157 @@ function ProjectShowcase({
   )
 }
 
-/* ─── b3k1c text logo component ─── */
+/* ─── b3k1c DEV LOGO - SVG circuit/terminal style ─── */
 function B3k1cLogo() {
-  // The characters "b3k1c" arranged creatively:
-  // b = bracket/container, 3 = mirrored E, k = forward slash arms, 1 = vertical line, c = open circle
-  // We'll make each letter individually animated and styled
-
-  const chars = [
-    { char: 'b', color: '#00ff88', delay: 0 },
-    { char: '3', color: '#00aaff', delay: 0.1 },
-    { char: 'k', color: '#aa44ff', delay: 0.2 },
-    { char: '1', color: '#ff0066', delay: 0.3 },
-    { char: 'c', color: '#00ff88', delay: 0.4 },
-  ]
-
   return (
-    <div className="b3k1c-logo-container">
-      <div className="b3k1c-logo-inner">
-        {chars.map((c, i) => (
-          <span
-            key={i}
-            className="b3k1c-char"
-            style={{
-              color: c.color,
-              animationDelay: `${c.delay}s`,
-              textShadow: `0 0 10px ${c.color}88, 0 0 20px ${c.color}44, 0 0 40px ${c.color}22`,
-            }}
-          >
-            {c.char}
-          </span>
-        ))}
-      </div>
-      {/* glitch layer copies */}
-      <div className="b3k1c-logo-glitch-1" aria-hidden="true">
-        {chars.map((c, i) => (
-          <span key={i} style={{ color: '#ff0066', animationDelay: `${c.delay}s` }}>{c.char}</span>
-        ))}
-      </div>
-      <div className="b3k1c-logo-glitch-2" aria-hidden="true">
-        {chars.map((c, i) => (
-          <span key={i} style={{ color: '#00aaff', animationDelay: `${c.delay}s` }}>{c.char}</span>
-        ))}
-      </div>
-      {/* decorative scan line across logo */}
-      <div className="b3k1c-logo-scanline" />
+    <div className="dev-logo-wrapper">
+      <svg
+        viewBox="0 0 300 300"
+        className="dev-logo-svg"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        {/* outer rotating hex ring */}
+        <g className="dev-logo-hex-outer">
+          <polygon
+            points="150,30 230,75 230,165 150,210 70,165 70,75"
+            fill="none"
+            stroke="#00ff8833"
+            strokeWidth="1"
+          />
+          {/* corner dots */}
+          <circle cx="150" cy="30" r="3" fill="#00ff88" className="dev-logo-dot" />
+          <circle cx="230" cy="75" r="3" fill="#00aaff" className="dev-logo-dot" style={{ animationDelay: '0.3s' }} />
+          <circle cx="230" cy="165" r="3" fill="#aa44ff" className="dev-logo-dot" style={{ animationDelay: '0.6s' }} />
+          <circle cx="150" cy="210" r="3" fill="#ff0066" className="dev-logo-dot" style={{ animationDelay: '0.9s' }} />
+          <circle cx="70" cy="165" r="3" fill="#00aaff" className="dev-logo-dot" style={{ animationDelay: '1.2s' }} />
+          <circle cx="70" cy="75" r="3" fill="#00ff88" className="dev-logo-dot" style={{ animationDelay: '1.5s' }} />
+        </g>
+
+        {/* inner rotating hex ring (opposite) */}
+        <g className="dev-logo-hex-inner">
+          <polygon
+            points="150,55 210,85 210,155 150,185 90,155 90,85"
+            fill="none"
+            stroke="#00aaff22"
+            strokeWidth="0.5"
+            strokeDasharray="8 4"
+          />
+        </g>
+
+        {/* circuit traces */}
+        <g className="dev-logo-circuits">
+          {/* left traces */}
+          <line x1="70" y1="75" x2="90" y2="85" stroke="#00ff8844" strokeWidth="0.5" />
+          <line x1="70" y1="165" x2="90" y2="155" stroke="#00ff8844" strokeWidth="0.5" />
+          {/* right traces */}
+          <line x1="230" y1="75" x2="210" y2="85" stroke="#00aaff44" strokeWidth="0.5" />
+          <line x1="230" y1="165" x2="210" y2="155" stroke="#00aaff44" strokeWidth="0.5" />
+          {/* top/bottom traces */}
+          <line x1="150" y1="30" x2="150" y2="55" stroke="#aa44ff44" strokeWidth="0.5" />
+          <line x1="150" y1="210" x2="150" y2="185" stroke="#ff006644" strokeWidth="0.5" />
+        </g>
+
+        {/* main text b3k1c */}
+        <text
+          x="150"
+          y="128"
+          textAnchor="middle"
+          className="dev-logo-text"
+          fill="#00ff88"
+          fontFamily="monospace"
+          fontSize="58"
+          fontWeight="900"
+          letterSpacing="-3"
+        >
+          b3k1c
+        </text>
+
+        {/* glitch text layer 1 */}
+        <text
+          x="150"
+          y="128"
+          textAnchor="middle"
+          className="dev-logo-glitch-1"
+          fill="#ff0066"
+          fontFamily="monospace"
+          fontSize="58"
+          fontWeight="900"
+          letterSpacing="-3"
+        >
+          b3k1c
+        </text>
+
+        {/* glitch text layer 2 */}
+        <text
+          x="150"
+          y="128"
+          textAnchor="middle"
+          className="dev-logo-glitch-2"
+          fill="#00aaff"
+          fontFamily="monospace"
+          fontSize="58"
+          fontWeight="900"
+          letterSpacing="-3"
+        >
+          b3k1c
+        </text>
+
+        {/* subtitle */}
+        <text
+          x="150"
+          y="155"
+          textAnchor="middle"
+          className="dev-logo-sub"
+          fill="#00ff8866"
+          fontFamily="monospace"
+          fontSize="10"
+          letterSpacing="6"
+        >
+          .EXE
+        </text>
+
+        {/* binary decoration top */}
+        <text x="95" y="70" fill="#00ff8822" fontFamily="monospace" fontSize="7" className="dev-logo-binary">
+          01101
+        </text>
+        <text x="185" y="70" fill="#00aaff22" fontFamily="monospace" fontSize="7" className="dev-logo-binary">
+          10010
+        </text>
+
+        {/* binary decoration bottom */}
+        <text x="95" y="195" fill="#ff006622" fontFamily="monospace" fontSize="7" className="dev-logo-binary">
+          11001
+        </text>
+        <text x="185" y="195" fill="#aa44ff22" fontFamily="monospace" fontSize="7" className="dev-logo-binary">
+          00110
+        </text>
+
+        {/* corner brackets */}
+        <g className="dev-logo-brackets">
+          {/* top-left */}
+          <path d="M60,65 L60,55 L70,55" fill="none" stroke="#00ff8855" strokeWidth="1.5" />
+          {/* top-right */}
+          <path d="M240,65 L240,55 L230,55" fill="none" stroke="#00aaff55" strokeWidth="1.5" />
+          {/* bottom-left */}
+          <path d="M60,175 L60,185 L70,185" fill="none" stroke="#aa44ff55" strokeWidth="1.5" />
+          {/* bottom-right */}
+          <path d="M240,175 L240,185 L230,185" fill="none" stroke="#ff006655" strokeWidth="1.5" />
+        </g>
+
+        {/* scanline */}
+        <rect className="dev-logo-scanline" x="55" y="0" width="190" height="2" rx="1" fill="url(#scanGrad)" />
+
+        {/* gradient defs */}
+        <defs>
+          <linearGradient id="scanGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="transparent" />
+            <stop offset="30%" stopColor="#00ff8866" />
+            <stop offset="50%" stopColor="#00aaff88" />
+            <stop offset="70%" stopColor="#aa44ff66" />
+            <stop offset="100%" stopColor="transparent" />
+          </linearGradient>
+        </defs>
+      </svg>
     </div>
   )
 }
@@ -572,7 +551,7 @@ function Hero() {
         style={{ y: logoY, opacity: logoOpacity, scale: logoScale }}
         className="relative z-10 mb-8"
       >
-        <div className="relative logo-ring p-4">
+        <div className="relative logo-ring p-3">
           <B3k1cLogo />
         </div>
       </motion.div>
@@ -738,6 +717,39 @@ function Footer() {
 export default function Home() {
   const containerRef = useRef(null)
 
+  /* Tomek Instalacije project data */
+  const tomekImages = [
+    '/portfolio/tomek-instalacije/section-1.png',
+    '/portfolio/tomek-instalacije/section-2.png',
+    '/portfolio/tomek-instalacije/section-3.png',
+    '/portfolio/tomek-instalacije/section-4.png',
+    '/portfolio/tomek-instalacije/section-5.png',
+    '/portfolio/tomek-instalacije/section-6.png',
+    '/portfolio/tomek-instalacije/section-7.png',
+  ]
+  const tomekTitles = [
+    'Hero Section',
+    'Landing Page',
+    'Stats & Services',
+    'Process Steps',
+    'Project Gallery',
+    'Services Detail',
+    'Contact Page',
+  ]
+
+  /* WEB SITES section cards */
+  const websiteCards = [
+    {
+      title: 'Tomek Instalacije',
+      subtitle: 'Plumbing & heating company website',
+      videoSrc: '/portfolio/tomek-instalacije/tomekinstalacije.mp4',
+      galleryImages: tomekImages,
+      galleryTitles: tomekTitles,
+    },
+    { title: 'Web Project 2', subtitle: 'Coming Soon' },
+    { title: 'Web Project 3', subtitle: 'Coming Soon' },
+  ]
+
   /* placeholder cards data */
   const designCards = [
     { title: 'Brand Identity', subtitle: 'Logo & Visual System' },
@@ -763,26 +775,6 @@ export default function Home() {
     { title: 'Game UI', subtitle: 'HUD & Menus' },
   ]
 
-  /* Tomek Instalacije project data */
-  const tomekImages = [
-    '/portfolio/tomek-instalacije/section-1.png',
-    '/portfolio/tomek-instalacije/section-2.png',
-    '/portfolio/tomek-instalacije/section-3.png',
-    '/portfolio/tomek-instalacije/section-4.png',
-    '/portfolio/tomek-instalacije/section-5.png',
-    '/portfolio/tomek-instalacije/section-6.png',
-    '/portfolio/tomek-instalacije/section-7.png',
-  ]
-  const tomekTitles = [
-    'Hero Section',
-    'Landing Page',
-    'Stats & Services',
-    'Process Steps',
-    'Project Gallery',
-    'Services Detail',
-    'Contact Page',
-  ]
-
   return (
     <div ref={containerRef} className="scanlines noise-bg relative bg-[#0a0a0f] min-h-screen">
       <Particles />
@@ -806,16 +798,11 @@ export default function Home() {
         {/* SECTION 02 — WEB SITES */}
         <div id="websites" className="scroll-mt-24">
           <PortfolioSection number="02" title="WEB SITES" color="#00aaff">
-            {/* Featured project: Tomek Instalacije */}
-            <ProjectShowcase
-              title="Tomek Instalacije"
-              description="Full website for plumbing & heating company"
-              tags={['Next.js', 'TypeScript', 'Tailwind', 'Responsive']}
-              images={tomekImages}
-              imageTitles={tomekTitles}
-              videoSrc="/portfolio/tomek-instalacije/tomekinstalacije.mp4"
-              color="#00aaff"
-            />
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+              {websiteCards.map((card, i) => (
+                <PortfolioCard key={card.title} {...card} color="#00aaff" index={i} />
+              ))}
+            </div>
           </PortfolioSection>
         </div>
 
