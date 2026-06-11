@@ -603,3 +603,84 @@ video {
     transform: scale(1) translateY(0);
   }
 }
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+
+/* Reduce heavy animations on mobile for performance */
+@media (max-width: 767px) {
+  /* Faster, simpler glitch on mobile */
+  .glitch-text::before,
+  .glitch-text::after {
+    display: none;
+  }
+
+  .glitch-text {
+    animation: none;
+  }
+
+  /* Lighter scanlines on mobile */
+  .scanlines::after {
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 3px,
+      rgba(0, 255, 136, 0.01) 3px,
+      rgba(0, 255, 136, 0.01) 6px
+    );
+  }
+
+  .scanlines::before {
+    animation: scanline 12s linear infinite;
+  }
+
+  /* Simpler logo animation on mobile */
+  .logo-hologram {
+    animation: none !important;
+    filter: drop-shadow(0 0 15px rgba(0, 255, 136, 0.5)) drop-shadow(0 0 30px rgba(0, 170, 255, 0.3));
+  }
+
+  .logo-ring {
+    animation: none !important;
+    box-shadow: 0 0 20px rgba(0, 255, 136, 0.2), 0 0 40px rgba(0, 255, 136, 0.1);
+  }
+
+  /* Lighter card hover on mobile - use active state instead */
+  .portfolio-item:hover {
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3), 0 0 15px rgba(0, 255, 136, 0.08);
+  }
+
+  .portfolio-item:active {
+    transform: translateY(-2px) scale(0.99);
+    border-color: rgba(0, 255, 136, 0.3);
+  }
+
+  /* Smaller corner decorations on mobile */
+  .corner-decor::before,
+  .corner-decor::after {
+    width: 12px;
+    height: 12px;
+  }
+
+  /* Simpler noise on mobile */
+  .noise-bg::after {
+    opacity: 0.5;
+  }
+
+  /* Prevent horizontal overflow */
+  html, body {
+    overflow-x: hidden;
+  }
+
+  /* Better touch targets */
+  button, a {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Viewport height fix for mobile browsers */
+@supports (height: 100dvh) {
+  .min-h-screen {
+    min-height: 100dvh;
+  }
+}
